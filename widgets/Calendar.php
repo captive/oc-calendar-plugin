@@ -144,7 +144,7 @@ class Calendar extends WidgetBase
     public function prepareVars()
     {
         $this->vars['cssClasses'] = implode(' ', $this->cssClasses);
-
+        // $this->vars['records'] = $this->getRecords();
     }
 
     public function render($options = null)
@@ -410,6 +410,25 @@ class Calendar extends WidgetBase
         return $query;
     }
 
+    public function getRecords()
+    {
+        $records = $this->prepareQuery()->get();
+        $list = [];
+        foreach ($records as $record) {
+            $id = $record->{$this->recordId};
+            $eventData = new EventData([
+                'id' => $id,
+                'url' => str_replace(':id', $id, $this->recordUrl),
+                'title' => $record->{$this->recordTitle},
+                'start' => $record->{$this->recordStart},
+                'end' => $record->{$this->recordEnd}
+            ]);
+            $list[] = $eventData->toArray();
+        }
+        traceLog($list);
+
+        return $list;
+    }
     public function onFetchEvents()
     {
         // $records = $this->config->modelClass::select($this->recordId, $this->recordTitle, $this->recordStart, $this->recordEnd)->get();
@@ -460,6 +479,20 @@ class Calendar extends WidgetBase
         $this->searchMode = $mode;
         $this->searchScope = $scope;
     }
+
+     /**
+     * Event handler for refreshing the calendar.
+     */
+    public function onRefresh()
+    {
+        // $this->prepareVars();
+        // return ['#'.$this->getId() => $this->makePartial('calendar')];
+        return [
+            'id'=>'calendar',
+            'events'=>$this->getRecords()
+        ];
+    }
+
     /**
      * Event handler for changing the filter
      */

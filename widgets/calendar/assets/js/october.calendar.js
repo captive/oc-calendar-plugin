@@ -72,8 +72,8 @@
 
         });
         this.calendarControl.render();
-        // this.addEvent();
         this.fetchEvents();
+        this.bindFilter();
         this.calendarControl.on('dateClick', this.proxy(this.onDateClick));
 
     }
@@ -91,14 +91,7 @@
     }
 
     Calendar.prototype.addEvent = function (eventObj = null) {
-        this.calendarControl.addEvent(
-            {
-                "title": "Conference",
-                "start": "2019-01-11",
-                "end": "2019-01-13",
-                "id": 22,
-            }
-        )
+        this.calendarControl.addEvent(eventObj);
     }
     Calendar.prototype.addEvents = function (eventList) {
         for(let event of eventList){
@@ -112,7 +105,24 @@
     Calendar.prototype.makeEventHandler = function (methodName) {
         return this.options.alias + "::" + methodName;
     }
+    Calendar.prototype.clearEvents = function(){
+        this.calendarControl.getEvents().forEach(event => {
+            event.remove();
+        });
+    }
 
+    Calendar.prototype.bindFilter = function(){
+        const self = this;
+        $(document).ajaxComplete(function (event, xhr, settings) {
+            let data = xhr.responseJSON;
+            if (data && data.hasOwnProperty('id') && data.hasOwnProperty('events')){
+                if(data.id === 'calendar') {
+                    self.clearEvents();
+                    self.addEvents(data.events);
+                }
+            }
+        });
+    }
     Calendar.prototype.fetchEvents = function (onSuccessCallback = function () {}, onErrorCallback = function () {}){
         const self = this;
         $.request(this.makeEventHandler('onFetchEvents'), {
