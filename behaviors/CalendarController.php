@@ -44,14 +44,16 @@ class CalendarController extends ControllerBehavior
     /**
      * @var \Backend\Classes\WidgetBase Reference to the filter widget objects.
      */
-    protected $filterWidget;
+    protected $filterWidget = null;
 
-    protected $calendarWidget;
+    protected $calendarWidget = null;
 
     /**
      * @var Model The initialized model used by the form.
      */
     protected $model;
+
+    protected $definition = 'calendar';
 
 
     /**
@@ -106,37 +108,88 @@ class CalendarController extends ControllerBehavior
 
         $config = $this->config;
         $config->model = $model;
-        $config->alias = 'calendar';
+        $config->alias = $this->definition;
+        $this->initColumnList($config);
+
+
         $widget = $this->makeWidget('\Captive\CalendarWidget\Widgets\Calendar', $config);
+        $widget->model = $model;
         $widget->bindToController();
         $this->calendarWidget = $widget;
 
-        if (isset($config->toolbar)) {
-            $toolbarConfig = $this->makeConfig($config->toolbar);
-            $toolbarConfig->alias = $widget->alias . 'Toolbar';
-            $toolbarWidget = $this->makeWidget('Backend\Widgets\Toolbar', $toolbarConfig);
-            $toolbarWidget->bindToController();
-            $toolbarWidget->cssClasses[] = 'list-header';
-            /*
-             * Link the Search Widget to the List Widget
-             */
-            if ($searchWidget = $toolbarWidget->getSearchWidget()) {
-                $searchWidget->bindEvent('search.submit', function () use ($widget, $searchWidget) {
-                    $widget->setSearchTerm($searchWidget->getActiveTerm());
-                    return $widget->onRefresh();
-                });
 
-                $widget->setSearchOptions([
-                    'mode' => $searchWidget->mode,
-                    'scope' => $searchWidget->scope,
-                ]);
+        $this->initToolbar($config, $widget);
+        $this->initFilter($config, $widget);
 
-                // Find predefined search term
-                $widget->setSearchTerm($searchWidget->getActiveTerm());
-            }
-            $this->toolbarWidget = $toolbarWidget;
-        }
         return $widget;
+    }
+
+    /**
+     * Read the "list" config in config_calendar.yaml, these columns can be used for search
+     *
+     * @param [type] $config
+     * @param [type] $widget
+     * @return void
+     */
+    private function initColumnList($config)
+    {
+        /*
+         * Prepare the list widget
+         */
+        $columnConfig = $this->makeConfig($config->list);
+        $config->columns = $columnConfig->columns;
+
+    }
+    private function initToolbar($config, $widget)
+    {
+        if (empty($config->toolbar)) return;
+        $toolbarConfig = $this->makeConfig($config->toolbar);
+        $toolbarConfig->alias = $widget->alias . 'Toolbar';
+        $toolbarWidget = $this->makeWidget('Backend\Widgets\Toolbar', $toolbarConfig);
+        $toolbarWidget->bindToController();
+        $toolbarWidget->cssClasses[] = 'list-header';
+        /*
+        * Link the Search Widget to the List Widget
+        */
+        if ($searchWidget = $toolbarWidget->getSearchWidget()) {
+            $searchWidget->bindEvent('search.submit', function () use ($widget, $searchWidget) {
+                $widget->setSearchTerm($searchWidget->getActiveTerm());
+                return $widget->onRefresh();
+            });
+
+            $widget->setSearchOptions([
+                'mode' => $searchWidget->mode,
+                'scope' => $searchWidget->scope,
+            ]);
+
+            // Find predefined search term
+            $widget->setSearchTerm($searchWidget->getActiveTerm());
+        }
+        $this->toolbarWidget = $toolbarWidget;
+    }
+    private function initFilter($config, $widget)
+    {
+        if (empty($config->filter)) return;
+
+        $widget->cssClasses[] = 'list-flush';
+
+        $filterConfig = $this->makeConfig($config->filter);
+        $filterConfig->alias = $widget->alias . 'Filter';
+        $filterWidget = $this->makeWidget('Backend\Widgets\Filter', $filterConfig);
+        $filterWidget->bindToController();
+
+
+        /*
+        * Filter the Calendar when the scopes are changed
+        */
+        $filterWidget->bindEvent('filter.update', function () use ($widget, $filterWidget) {
+            return $widget->onFilter();
+        });
+        // Apply predefined filter values
+        $widget->addFilter([$filterWidget, 'applyAllScopesToQuery']);
+        $this->filterWidget = $filterWidget;
+
+
     }
 
     /**
@@ -172,7 +225,7 @@ class CalendarController extends ControllerBehavior
 
         $vars = [
             'toolbar' => $this->toolbarWidget,
-            'filter' => null,
+            'filter' => $this->filterWidget,
             'calendar' => $this->calendarWidget,
         ];
 

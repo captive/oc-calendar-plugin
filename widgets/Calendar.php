@@ -54,6 +54,16 @@ class Calendar extends WidgetBase
     public $availableDisplayModes = [];
 
     /**
+     * @var array Calendar of CSS classes to apply to the Calendar container element
+     */
+    public $cssClasses = [];
+        /**
+     * @var array Collection of functions to apply to each list query.
+     */
+    protected $filterCallbacks = [];
+
+
+    /**
      * @var string The context of this form, fields that do not belong
      * to this context will not be shown.
      */
@@ -84,12 +94,23 @@ class Calendar extends WidgetBase
     public $searchScope;
 
     /**
+     * Column config from columns.yaml
+     *
+     * @var array
+     */
+    public $columns;
+
+    public $searchableColumns = null;
+    public $visiableColumns = null;
+
+    /**
      * @inheritDoc
      */
     public function init()
     {
         //model/xxx/calendar.yaml
         $this->fillFromConfig([
+            'columns',
             'recordUrl',
             'recordOnClick',
             'recordId',
@@ -120,20 +141,280 @@ class Calendar extends WidgetBase
         $this->addJs('js/october.calendar.js', 'core');
     }
 
+    public function prepareVars()
+    {
+        $this->vars['cssClasses'] = implode(' ', $this->cssClasses);
+
+    }
+
     public function render($options = null)
     {
-        // $this->prepareVars();
+        $this->prepareVars();
         $extraVars = [];
         return $this->makePartial(static::PARTIAL_FILE, $extraVars);
     }
 
+    protected function isColumnRelated($column, $multi = false)
+    {
+        if (!isset($column->relation) || $this->isColumnPivot($column)) {
+            return false;
+        }
+
+        if (!$this->model->hasRelation($column->relation)) {
+            throw new ApplicationException(Lang::get(
+                'backend::lang.model.missing_relation',
+                ['class'=>get_class($this->model), 'relation'=>$column->relation]
+            ));
+        }
+
+        if (!$multi) {
+            return true;
+        }
+
+        $relationType = $this->model->getRelationType($column->relation);
+
+        return in_array($relationType, [
+            'hasMany',
+            'belongsToMany',
+            'morphToMany',
+            'morphedByMany',
+            'morphMany',
+            'attachMany',
+            'hasManyThrough'
+        ]);
+    }
+
+    /**
+     * Returns a collection of columns which can be searched.
+     * @return array
+     */
+    protected function getSearchableColumns()
+    {
+        if ($this->searchableColumns != null) return $this->searchableColumns;
+        $searchable = [];
+
+        foreach ($columns as $column) {
+            if (!$column->searchable) {
+                continue;
+            }
+
+            $searchable[] = $column;
+        }
+        $this->searchableColumns = $searchable;
+        return $searchable;
+    }
+
+    protected function getVisibleColumns()
+    {
+        if ($this->visiableColumns != null) return $this->visiableColumns;
+        $visiableColumns = [$this->recordTitle, $this->recordStart, $this->recordEnd];
+        $this->visiableColumns = [];
+        foreach ($this->columns as $name => $column){
+            if(array_key_exists($name , $visiableColumns )){
+                $this->visiableColumns[$name] = $column;
+            }
+        }
+        return $this->visiableColumns;
+    }
+
+    /**
+     * Replaces the @ symbol with a table name in a model
+     * @param  string $sql
+     * @param  string $table
+     * @return string
+     */
+    protected function parseTableName($sql, $table)
+    {
+        return str_replace('@', $table.'.', $sql);
+    }
+
+    /**
+     * Applies the search constraint to a query.
+     */
+    protected function applySearchToQuery($query, $columns, $boolean = 'and')
+    {
+        $term = $this->searchTerm;
+
+        if ($scopeMethod = $this->searchScope) {
+            $searchMethod = $boolean == 'and' ? 'where' : 'orWhere';
+            $query->$searchMethod(function ($q) use ($term, $columns, $scopeMethod) {
+                $q->$scopeMethod($term, $columns);
+            });
+        }
+        else {
+            $searchMethod = $boolean == 'and' ? 'searchWhere' : 'orSearchWhere';
+            $query->$searchMethod($term, $columns, $this->searchMode);
+        }
+    }
+
+    /**
+     * Applies any filters to the model.
+     */
+    public function prepareQuery()
+    {
+        $query = $this->model->newQuery();
+        $primaryTable = $this->model->getTable();
+        $selects = [$primaryTable.'.*'];
+        $joins = [];
+        $withs = [];
+
+        $this->fireSystemEvent('backend.calendar.extendQueryBefore', [$query]);
+
+        /*
+         * Prepare searchable column names
+         */
+        $primarySearchable = [];
+        $relationSearchable = [];
+
+        $columnsToSearch = [];
+        if (!empty($this->searchTerm) && ($searchableColumns = $this->getSearchableColumns())) {
+            foreach ($searchableColumns as $column) {
+                /*
+                 * Related
+                 */
+                if ($this->isColumnRelated($column)) {
+                    $table = $this->model->makeRelation($column->relation)->getTable();
+                    $columnName = isset($column->sqlSelect)
+                        ? DbDongle::raw($this->parseTableName($column->sqlSelect, $table))
+                        : $table . '.' . $column->valueFrom;
+
+                    $relationSearchable[$column->relation][] = $columnName;
+                }
+                /*
+                 * Primary
+                 */
+                else {
+                    $columnName = isset($column->sqlSelect)
+                        ? DbDongle::raw($this->parseTableName($column->sqlSelect, $primaryTable))
+                        : DbDongle::cast(Db::getTablePrefix() . $primaryTable . '.' . $column->columnName, 'TEXT');
+
+                    $primarySearchable[] = $columnName;
+                }
+            }
+        }
+        $visiableColumns = $this->getVisibleColumns();
+        foreach ($visiableColumns as $column) {
+
+            // If useRelationCount is enabled, eager load the count of the relation into $relation_count
+            if ($column->relation && @$column->config['useRelationCount']) {
+                $query->withCount($column->relation);
+            }
+            if (!$this->isColumnRelated($column) || (!isset($column->sqlSelect) && !isset($column->valueFrom))) {
+                continue;
+            }
+            if (isset($column->valueFrom)) {
+                $withs[] = $column->relation;
+            }
+            $joins[] = $column->relation;
+        }
+
+        /*
+         * Add eager loads to the query
+         */
+        if ($withs) {
+            $query->with(array_unique($withs));
+        }
+        /*
+         * Apply search term
+         */
+        $query->where(function ($innerQuery) use ($primarySearchable, $relationSearchable, $joins) {
+
+            /*
+             * Search primary columns
+             */
+            if (count($primarySearchable) > 0) {
+                $this->applySearchToQuery($innerQuery, $primarySearchable, 'or');
+            }
+
+            /*
+             * Search relation columns
+             */
+            if ($joins) {
+                foreach (array_unique($joins) as $join) {
+                    /*
+                     * Apply a supplied search term for relation columns and
+                     * constrain the query only if there is something to search for
+                     */
+                    $columnsToSearch = array_get($relationSearchable, $join, []);
+
+                    if (count($columnsToSearch) > 0) {
+                        $innerQuery->orWhereHas($join, function ($_query) use ($columnsToSearch) {
+                            $this->applySearchToQuery($_query, $columnsToSearch);
+                        });
+                    }
+                }
+            }
+        });
+
+        /*
+         * Custom select queries
+         */
+        foreach ($visiableColumns as $column) {
+            if (!isset($column->sqlSelect)) {
+                continue;
+            }
+
+            $alias = $query->getQuery()->getGrammar()->wrap($column->columnName);
+
+            /*
+             * Relation column
+             */
+            if (isset($column->relation)) {
+
+                // @todo Find a way...
+                $relationType = $this->model->getRelationType($column->relation);
+                if ($relationType == 'morphTo') {
+                    throw new ApplicationException('The relationship morphTo is not supported for list columns.');
+                }
+
+                $table =  $this->model->makeRelation($column->relation)->getTable();
+                $sqlSelect = $this->parseTableName($column->sqlSelect, $table);
+
+                /*
+                 * Manipulate a count query for the sub query
+                 */
+                $relationObj = $this->model->{$column->relation}();
+                $countQuery = $relationObj->getRelationExistenceQuery($relationObj->getRelated()->newQueryWithoutScopes(), $query);
+
+                $joinSql = $this->isColumnRelated($column, true)
+                    ? DbDongle::raw("group_concat(" . $sqlSelect . " separator ', ')")
+                    : DbDongle::raw($sqlSelect);
+
+                $joinSql = $countQuery->select($joinSql)->toSql();
+
+                $selects[] = Db::raw("(".$joinSql.") as ".$alias);
+            }
+            /*
+             * Primary column
+             */
+            else {
+                $sqlSelect = $this->parseTableName($column->sqlSelect, $primaryTable);
+                $selects[] = DbDongle::raw($sqlSelect . ' as '. $alias);
+            }
+        }
+
+        /*
+         * Apply filters
+         */
+        foreach ($this->filterCallbacks as $callback) {
+            $callback($query);
+        }
+        /*
+         * Add custom selects
+         */
+        $query->addSelect($selects);
+
+        if ($event = $this->fireSystemEvent('backend.calendar.extendQuery', [$query])) {
+            return $event;
+        }
+        return $query;
+    }
 
     public function onFetchEvents()
     {
-        $startTime = post('startTime');
-        $endTime = post('endTime');
-
-        $records = $this->config->modelClass::select($this->recordId, $this->recordTitle, $this->recordStart, $this->recordEnd)->get();
+        // $records = $this->config->modelClass::select($this->recordId, $this->recordTitle, $this->recordStart, $this->recordEnd)->get();
+        $query = $this->prepareQuery();
+        $records = $query->get();
         $list = [];
         foreach ($records as $record) {
             $id = $record->{$this->recordId};
@@ -178,6 +459,22 @@ class Calendar extends WidgetBase
 
         $this->searchMode = $mode;
         $this->searchScope = $scope;
+    }
+    /**
+     * Event handler for changing the filter
+     */
+    public function onFilter()
+    {
+        // $this->currentPageNumber = 1;
+        return $this->onRefresh();
+    }
+    //
+    // Filtering
+    //
+
+    public function addFilter(callable $filter)
+    {
+        $this->filterCallbacks[] = $filter;
     }
 
 }
