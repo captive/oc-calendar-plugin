@@ -42,6 +42,7 @@ class Calendar extends WidgetBase
     public $recordStart;
 
     public $recordEnd;
+    public $editable = false;
 
     private $displayModeDictionary = [
         'month'=> 'month',
@@ -95,7 +96,8 @@ class Calendar extends WidgetBase
             'recordTitle',
             'recordStart',
             'recordEnd',
-            'availableDisplayModes'
+            'availableDisplayModes',
+            'editable'
         ]);
         $calendarControlRight = [];
         foreach ($this->availableDisplayModes as $modeKey) {

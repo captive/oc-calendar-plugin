@@ -18,7 +18,8 @@
 
     Calendar.DEFAULTS = {
         alias: null,
-        displayModes: 'month'
+        displayModes: 'month',
+        editable: false,
     }
 
     Calendar.prototype.init = function () {
@@ -63,10 +64,11 @@
 
             weekNumbers: true,
             weekNumbersWithinDays: true,
-            weekNumberCalculation: 'ISO',
 
-            editable: true,
+            editable: this.options.editable,
             eventLimit: true, // allow "more" link when too many events
+
+            firstDay: 0
 
         });
         this.calendarControl.render();
@@ -102,7 +104,6 @@
         for(let event of eventList){
             this.calendarControl.addEvent(event);
         }
-
     }
 
     /**
