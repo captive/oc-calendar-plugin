@@ -88,7 +88,7 @@
         const url = info.event.url;
         if (url) {
             if (url.startsWith('http')){
-                window.open(info.event.url);
+                location.href = url;
             }else{
                 eval(url);
             }
