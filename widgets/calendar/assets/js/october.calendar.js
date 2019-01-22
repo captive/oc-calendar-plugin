@@ -25,7 +25,7 @@
     Calendar.prototype.init = function () {
 
         let self = this;
-        $(window).load(function () {
+        $(document).ready(function () {
             self.initCalendarControl();
         });
 
@@ -50,6 +50,7 @@
 
     Calendar.prototype.initCalendarControl = function(){
         const $calendar = this.$el.find('.field-calendar-control');
+        const self = this;
         this.calendarControl = new FullCalendar.Calendar($calendar[0], {
             header: {
                 left: 'prev,next today',
@@ -70,13 +71,28 @@
             editable: this.options.editable,
             eventLimit: true, // allow "more" link when too many events
 
-            firstDay: 0
+            firstDay: 0,
+            eventClick: function(info){
+                self.onEventClick(info);
+            },
 
         });
         this.calendarControl.render();
         this.fetchEvents();
         this.calendarControl.on('dateClick', this.proxy(this.onDateClick));
 
+    }
+
+    Calendar.prototype.onEventClick = function(info){
+        info.jsEvent.preventDefault();
+        const url = info.event.url;
+        if (url) {
+            if (url.startsWith('http')){
+                window.open(info.event.url);
+            }else{
+                eval(url);
+            }
+        }
     }
 
     Calendar.prototype.disposeCalendarControl = function () {
@@ -180,3 +196,16 @@
     });
 
 }(window.jQuery);
+
+// Sample for config_calendar.yaml -> recordOnClick
+// + function ($) {
+//     "use strict";
+//     var EventController = function () {
+
+//         this.onEventClick = function (eventId) {
+//             alert('eventID  = '+ eventId);
+//         }
+
+//     }
+//     $.oc.evnetController = new EventController;
+// }(window.jQuery);

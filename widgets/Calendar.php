@@ -122,6 +122,7 @@ class Calendar extends WidgetBase
         ]);
 
         $this->initColumns();
+
         $calendarControlRight = [];
         foreach ($this->availableDisplayModes as $modeKey) {
             if(array_key_exists($modeKey, $this->displayModeDictionary)){
@@ -130,8 +131,23 @@ class Calendar extends WidgetBase
         }
         $this->availableDisplayModes = implode(",", $calendarControlRight);
 
+        $this->initRecordUrl();
     }
 
+    protected function initRecordUrl()
+    {
+        if (!empty($this->recordOnClick)) {
+            $this->recordUrl = $this->recordOnClick;
+            return;
+        }
+
+        if(empty($this->recordUrl)){
+            $this->recordUrl = 'javascript:;';
+            return;
+        }
+
+        $this->recordUrl =Backend::url($this->recordUrl);
+    }
     /**
      * Transfer the array column to ListColumn type
      *
