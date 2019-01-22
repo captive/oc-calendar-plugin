@@ -235,13 +235,20 @@ class Calendar extends WidgetBase
         return $searchable;
     }
 
-    protected function getVisibleColumns()
+    protected function getVisibleRelationColumns()
     {
         if ($this->visiableColumns != null) return $this->visiableColumns;
-        $visiableColumns = [$this->recordTitle, $this->recordStart, $this->recordEnd];
+
+        $defaultColumnNames = [$this->recordTitle, $this->recordStart, $this->recordEnd];
+        $searchableColumns = $this->getSearchableColumns();
+        $searchableColumnNames = [];
+        foreach($searchableColumns  as $column) $searchableColumnNames[] = $column->columnName;
+
+        $visiableColumns = array_unique(array_merge($defaultColumnNames, $searchableColumnNames));
+
         $this->visiableColumns = [];
         foreach ($this->columns as $name => $column){
-            if(array_key_exists($name , $visiableColumns )){
+            if(in_array($name , $visiableColumns )){
                 $this->visiableColumns[$name] = $column;
             }
         }
@@ -371,7 +378,7 @@ class Calendar extends WidgetBase
                 }
             }
         }
-        $visiableColumns = $this->getVisibleColumns();
+        $visiableColumns = $this->getVisibleRelationColumns();
         foreach ($visiableColumns as $column) {
 
             // If useRelationCount is enabled, eager load the count of the relation into $relation_count
