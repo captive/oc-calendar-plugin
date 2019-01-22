@@ -223,6 +223,19 @@ class CalendarController extends ControllerBehavior
             throw new ApplicationException(Lang::get('backend::lang.list.behavior_not_ready'));
         }
 
+        if (!empty($options['readOnly']) || !empty($options['disabled'])){
+            $this->calendarWidget->previewMode = true;
+        }
+
+        if (isset($options['preview'])) {
+            $this->calendarWidget->previewMode = $options['preview'];
+        }
+
+        if ($this->calendarWidget->previewMode ){
+            $this->calendarWidget->editable = false;
+        }
+
+
         $vars = [
             'toolbar' => $this->toolbarWidget,
             'filter' => $this->filterWidget,
