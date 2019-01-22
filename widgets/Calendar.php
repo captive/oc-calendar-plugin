@@ -120,6 +120,8 @@ class Calendar extends WidgetBase
             'availableDisplayModes',
             'editable'
         ]);
+
+        $this->initColumns();
         $calendarControlRight = [];
         foreach ($this->availableDisplayModes as $modeKey) {
             if(array_key_exists($modeKey, $this->displayModeDictionary)){
@@ -128,6 +130,20 @@ class Calendar extends WidgetBase
         }
         $this->availableDisplayModes = implode(",", $calendarControlRight);
 
+    }
+
+    /**
+     * Transfer the array column to ListColumn type
+     *
+     * @return void
+     */
+    protected function initColumns()
+    {
+        $listColumns = [];
+        foreach ($this->columns as $columnName => $config) {
+            $listColumns[$columnName] = $this->makeListColumn($columnName, $config);
+        }
+        $this->columns = $listColumns;
     }
 
     /**
@@ -152,6 +168,21 @@ class Calendar extends WidgetBase
         $this->prepareVars();
         $extraVars = [];
         return $this->makePartial(static::PARTIAL_FILE, $extraVars);
+    }
+
+    /**
+     * Copy from Lists.php
+     * Checks if a column refers to a pivot model specifically.
+     * @param  ListColumn  $column List column object
+     * @return boolean
+     */
+    protected function isColumnPivot($column)
+    {
+        if (!isset($column->relation) || $column->relation != 'pivot') {
+            return false;
+        }
+
+        return true;
     }
 
     protected function isColumnRelated($column, $multi = false)
@@ -193,8 +224,8 @@ class Calendar extends WidgetBase
         if ($this->searchableColumns != null) return $this->searchableColumns;
         $searchable = [];
 
-        foreach ($columns as $column) {
-            if (!$column->searchable) {
+        foreach ($this->columns as $column) {
+            if (empty($column->searchable)) {
                 continue;
             }
 
@@ -245,6 +276,54 @@ class Calendar extends WidgetBase
             $searchMethod = $boolean == 'and' ? 'searchWhere' : 'orSearchWhere';
             $query->$searchMethod($term, $columns, $this->searchMode);
         }
+    }
+
+    /**
+     * Creates a list column object from it's name and configuration.
+     */
+    protected function makeListColumn($name, $config)
+    {
+        if (is_string($config)) {
+            $label = $config;
+        }
+        elseif (isset($config['label'])) {
+            $label = $config['label'];
+        }
+        else {
+            $label = studly_case($name);
+        }
+
+        /*
+         * Auto configure pivot relation
+         */
+        if (starts_with($name, 'pivot[') && strpos($name, ']') !== false) {
+            $_name = HtmlHelper::nameToArray($name);
+            $relationName = array_shift($_name);
+            $valueFrom = array_shift($_name);
+
+            if (count($_name) > 0) {
+                $valueFrom  .= '['.implode('][', $_name).']';
+            }
+
+            $config['relation'] = $relationName;
+            $config['valueFrom'] = $valueFrom;
+            $config['searchable'] = false;
+        }
+        /*
+         * Auto configure standard relation
+         */
+        elseif (strpos($name, '[') !== false && strpos($name, ']') !== false) {
+            $config['valueFrom'] = $name;
+            $config['sortable'] = false;
+            $config['searchable'] = false;
+        }
+
+        $columnType = $config['type'] ?? null;
+
+        $column = new ListColumn($name, $label);
+        $column->displayAs($columnType, $config);
+
+        return $column;
     }
 
     /**
@@ -425,10 +504,10 @@ class Calendar extends WidgetBase
             ]);
             $list[] = $eventData->toArray();
         }
-        traceLog($list);
-
         return $list;
     }
+
+
     public function onFetchEvents()
     {
         // $records = $this->config->modelClass::select($this->recordId, $this->recordTitle, $this->recordStart, $this->recordEnd)->get();
@@ -446,7 +525,6 @@ class Calendar extends WidgetBase
             ]);
             $list[] = $eventData->toArray();
         }
-        traceLog($list);
 
         return Response::json([
             'events' => $list
@@ -482,14 +560,15 @@ class Calendar extends WidgetBase
 
      /**
      * Event handler for refreshing the calendar.
+     * The search widget will call onRefresh
+     * @see CalendarController->initToolbar
      */
     public function onRefresh()
     {
-        // $this->prepareVars();
-        // return ['#'.$this->getId() => $this->makePartial('calendar')];
         return [
-            'id'=>'calendar',
-            'events'=>$this->getRecords()
+            'id'     => 'calendar',
+            'method' => 'onRefresh',
+            'events' => $this->getRecords()
         ];
     }
 

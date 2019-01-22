@@ -30,10 +30,12 @@
         });
 
         this.$el.on('dispose-control', this.proxy(this.dispose));
+        $(document).on('ajaxComplete', this.proxy(this.onFilterUpdate));
 
     }
     Calendar.prototype.dispose = function () {
 
+        $(document).off('ajaxComplete', this.proxy(this.onFilterUpdate));
         this.$el.off('dispose-control', this.proxy(this.dispose));
         this.$el.removeData('oc.calendar');
 
@@ -73,7 +75,6 @@
         });
         this.calendarControl.render();
         this.fetchEvents();
-        this.bindFilter();
         this.calendarControl.on('dateClick', this.proxy(this.onDateClick));
 
     }
@@ -111,18 +112,18 @@
         });
     }
 
-    Calendar.prototype.bindFilter = function(){
-        const self = this;
-        $(document).ajaxComplete(function (event, xhr, settings) {
-            let data = xhr.responseJSON;
-            if (data && data.hasOwnProperty('id') && data.hasOwnProperty('events')){
-                if(data.id === 'calendar') {
-                    self.clearEvents();
-                    self.addEvents(data.events);
-                }
+    Calendar.prototype.onFilterUpdate = function (event, xhr, settings){
+        const data = xhr.responseJSON;
+        if (data && data.hasOwnProperty('id')
+                && data.hasOwnProperty('events')
+                && data.hasOwnProperty('method')) {
+            if (data.id === 'calendar' && data.method === 'onRefresh') {
+                this.clearEvents();
+                this.addEvents(data.events);
             }
-        });
+        }
     }
+
     Calendar.prototype.fetchEvents = function (onSuccessCallback = function () {}, onErrorCallback = function () {}){
         const self = this;
         $.request(this.makeEventHandler('onFetchEvents'), {
