@@ -1,3 +1,4 @@
+
 + function ($) {
     "use strict";
     const Base = $.oc.foundation.base,
@@ -51,12 +52,15 @@
     Calendar.prototype.initCalendarControl = function(){
         const $calendar = this.$el.find('.field-calendar-control');
         const self = this;
+        const timezone = $('meta[name="backend-timezone"]').attr('content');
         this.calendarControl = new FullCalendar.Calendar($calendar[0], {
             header: {
                 left: 'prev,next today',
                 center: 'title',
                 right: this.options.displayModes
             },
+            timeZone: timezone,
+            timeZoneImpl: 'moment-timezone',
             titleFormat: {
                 month: 'short',
                 year: 'numeric',
@@ -112,7 +116,7 @@
     }
     Calendar.prototype.addEvents = function (eventList) {
         for(let event of eventList){
-            this.calendarControl.addEvent(event);
+            this.addEvent(event);
         }
     }
 

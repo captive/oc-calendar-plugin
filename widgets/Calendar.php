@@ -170,6 +170,8 @@ class Calendar extends WidgetBase
         // $this->addCss('css/fullcalendar.css', '4.0.0-alpha.4');
         $this->addCss(['css/fullcalendar.css' ,'less/calendar.less'], 'core');
         $this->addJs('js/fullcalendar.js', '4.0.0-alpha.4');
+        // @see https://fullcalendar.io/docs/v4/timeZone
+        $this->addJs('js/plugins/moment-timezone.min.js', '4.0.0-alpha.4');
         $this->addJs('js/october.calendar.js', 'core');
     }
 
@@ -548,7 +550,6 @@ class Calendar extends WidgetBase
             ]);
             $list[] = $eventData->toArray();
         }
-
         return Response::json([
             'events' => $list
         ]);
