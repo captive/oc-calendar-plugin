@@ -8,6 +8,8 @@
         this.options = options;
         this.$el = $(element);
         this.calendarControl =  null;
+        this.$loadContainer = this.$el.find('.loading-indicator-container:first');
+
 
         $.oc.foundation.controlUtils.markDisposable(element)
         Base.call(this)
@@ -146,16 +148,18 @@
 
     Calendar.prototype.fetchEvents = function (onSuccessCallback = function () {}, onErrorCallback = function () {}){
         const self = this;
+        this.$loadContainer.loadIndicator();
         $.request(this.makeEventHandler('onFetchEvents'), {
             data: '',
             success: function (data, textStatus, jqXHR) {
                 const events = data['events'];
                 self.addEvents(events);
+                self.$loadContainer.loadIndicator('hide');
                 onSuccessCallback();
             },
             error: function (jqXHR, textStatus, error) {
+                self.$loadContainer.loadIndicator('hide');
                 this.error(jqXHR, textStatus, error);
-
                 onErrorCallback();
             }
         });
