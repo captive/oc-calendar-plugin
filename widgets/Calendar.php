@@ -4,9 +4,11 @@ use Db;
 use Log;
 use Html;
 use Lang;
+use Config;
 use Backend;
 use DbDongle;
 use Response;
+use DateTimeZone;
 use Carbon\Carbon;
 use October\Rain\Html\Helper as HtmlHelper;
 use October\Rain\Router\Helper as RouterHelper;
@@ -518,6 +520,8 @@ class Calendar extends WidgetBase
     {
         $records = $this->prepareQuery()->get();
         $list = [];
+
+        $timeZone = new DateTimeZone(Config::get('app.timezone','UTC'));
         foreach ($records as $record) {
             $id = $record->{$this->recordId};
             $eventData = new EventData([
@@ -526,7 +530,7 @@ class Calendar extends WidgetBase
                 'title' => $record->{$this->recordTitle},
                 'start' => $record->{$this->recordStart},
                 'end' => $record->{$this->recordEnd}
-            ]);
+            ], $timeZone);
             $list[] = $eventData->toArray();
         }
         return $list;
@@ -535,23 +539,8 @@ class Calendar extends WidgetBase
 
     public function onFetchEvents()
     {
-        // $records = $this->config->modelClass::select($this->recordId, $this->recordTitle, $this->recordStart, $this->recordEnd)->get();
-        $query = $this->prepareQuery();
-        $records = $query->get();
-        $list = [];
-        foreach ($records as $record) {
-            $id = $record->{$this->recordId};
-            $eventData = new EventData([
-                'id' => $id,
-                'url' => str_replace(':id', $id, $this->recordUrl),
-                'title' => $record->{$this->recordTitle},
-                'start' => $record->{$this->recordStart},
-                'end' => $record->{$this->recordEnd}
-            ]);
-            $list[] = $eventData->toArray();
-        }
         return Response::json([
-            'events' => $list
+            'events' => $this->getRecords(),
         ]);
     }
 
