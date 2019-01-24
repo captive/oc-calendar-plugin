@@ -104,6 +104,7 @@ class Calendar extends WidgetBase
 
     public $searchableColumns = null;
     public $visiableColumns = null;
+    public $calendarVisiableColumns = [];
 
     /**
      * @inheritDoc
@@ -132,6 +133,7 @@ class Calendar extends WidgetBase
             }
         }
         $this->availableDisplayModes = implode(",", $calendarControlRight);
+        $this->calendarVisiableColumns = [$this->recordTitle, $this->recordStart, $this->recordEnd];
 
         $this->initRecordUrl();
     }
@@ -205,6 +207,10 @@ class Calendar extends WidgetBase
         return true;
     }
 
+    protected function isColumnInCalendar($column)
+    {
+        return in_array($column->columnName, $this->calendarVisiableColumns);
+    }
     protected function isColumnRelated($column, $multi = false)
     {
         if (!isset($column->relation) || $this->isColumnPivot($column)) {
@@ -259,7 +265,7 @@ class Calendar extends WidgetBase
     {
         if ($this->visiableColumns != null) return $this->visiableColumns;
 
-        $defaultColumnNames = [$this->recordTitle, $this->recordStart, $this->recordEnd];
+        $defaultColumnNames = $this->calendarVisiableColumns;
         $searchableColumns = $this->getSearchableColumns();
         $searchableColumnNames = [];
         foreach($searchableColumns  as $column) $searchableColumnNames[] = $column->columnName;
@@ -456,7 +462,7 @@ class Calendar extends WidgetBase
          * Custom select queries
          */
         foreach ($visiableColumns as $column) {
-            if (!isset($column->sqlSelect)) {
+            if (!isset($column->sqlSelect) || !$this->isColumnInCalendar($column)) {
                 continue;
             }
 
