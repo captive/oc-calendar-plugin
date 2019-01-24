@@ -83,13 +83,8 @@ class CalendarController extends ControllerBehavior
      * Index Controller action.
      * @return void
      */
-    public function index()
+    public function calendar()
     {
-        $useList = get('list');
-        if ($useList) {
-            $this->controller->asExtension('Backend\Behaviors\ListController')->index();
-            return ;
-        }
 
         $this->controller->pageTitle = $this->controller->pageTitle ? : Lang::get($this->getConfig(
             'title',
@@ -214,10 +209,6 @@ class CalendarController extends ControllerBehavior
 
     public function calendarRender($options = [])
     {
-        $useList = get('list');
-        if ($useList) {
-            return $this->controller->asExtension('Backend\Behaviors\ListController')->listRender();
-        }
 
         if (empty($this->calendarWidget)) {
             throw new ApplicationException(Lang::get('backend::lang.list.behavior_not_ready'));
