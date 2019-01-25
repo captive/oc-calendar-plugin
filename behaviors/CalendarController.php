@@ -211,7 +211,7 @@ class CalendarController extends ControllerBehavior
     {
 
         if (empty($this->calendarWidget)) {
-            throw new ApplicationException(Lang::get('backend::lang.list.behavior_not_ready'));
+            throw new ApplicationException('Calendar behavior has not been initialized');
         }
 
         if (!empty($options['readOnly']) || !empty($options['disabled'])){

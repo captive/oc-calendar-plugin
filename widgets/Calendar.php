@@ -475,7 +475,7 @@ class Calendar extends WidgetBase
                 // @todo Find a way...
                 $relationType = $this->model->getRelationType($column->relation);
                 if ($relationType == 'morphTo') {
-                    throw new ApplicationException('The relationship morphTo is not supported for list columns.');
+                    throw new ApplicationException('The relationship morphTo is not supported for Calendar columns.');
                 }
 
                 $table =  $this->model->makeRelation($column->relation)->getTable();
