@@ -1,4 +1,4 @@
-<?php namespace Captive\CalendarWidget\Classes;
+<?php namespace Captive\Calendar\Classes;
 
 use DateTime;
 use DateTimeZone;

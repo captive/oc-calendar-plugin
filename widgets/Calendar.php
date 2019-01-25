@@ -1,4 +1,4 @@
-<?php namespace Captive\CalendarWidget\Widgets;
+<?php namespace Captive\Calendar\Widgets;
 
 use Db;
 use Log;
@@ -18,7 +18,7 @@ use Backend\Classes\ListColumn;
 use Backend\Classes\WidgetBase;
 use October\Rain\Database\Model;
 use ApplicationException;
-use Captive\CalendarWidget\Classes\Event as EventData;
+use Captive\Calendar\Classes\Event as EventData;
 
 class Calendar extends WidgetBase
 {
@@ -171,7 +171,6 @@ class Calendar extends WidgetBase
      */
     protected function loadAssets()
     {
-        // $this->addCss('css/fullcalendar.css', '4.0.0-alpha.4');
         $this->addCss(['css/fullcalendar.css' ,'less/calendar.less'], 'core');
         $this->addJs('js/fullcalendar.js', '4.0.0-alpha.4');
         // @see https://fullcalendar.io/docs/v4/timeZone
@@ -182,7 +181,6 @@ class Calendar extends WidgetBase
     public function prepareVars()
     {
         $this->vars['cssClasses'] = implode(' ', $this->cssClasses);
-        // $this->vars['records'] = $this->getRecords();
     }
 
     public function render($options = null)
@@ -211,6 +209,7 @@ class Calendar extends WidgetBase
     {
         return in_array($column->columnName, $this->calendarVisiableColumns);
     }
+
     protected function isColumnRelated($column, $multi = false)
     {
         if (!isset($column->relation) || $this->isColumnPivot($column)) {

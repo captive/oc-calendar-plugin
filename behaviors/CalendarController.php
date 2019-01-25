@@ -1,4 +1,4 @@
-<?php namespace Captive\CalendarWidget\Behaviors;
+<?php namespace Captive\Calendar\Behaviors;
 
 use Db;
 use Str;
@@ -107,7 +107,7 @@ class CalendarController extends ControllerBehavior
         $this->initColumnList($config);
 
 
-        $widget = $this->makeWidget('\Captive\CalendarWidget\Widgets\Calendar', $config);
+        $widget = $this->makeWidget('\Captive\Calendar\Widgets\Calendar', $config);
         $widget->model = $model;
         $widget->bindToController();
         $this->calendarWidget = $widget;

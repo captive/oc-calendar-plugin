@@ -1,10 +1,10 @@
-<?php namespace Captive\CalendarWidget;
+<?php namespace Captive\Calendar;
 
 use Backend;
 use System\Classes\PluginBase;
 
 /**
- * CalendarWidget Plugin Information File
+ * Calendar Plugin Information File
  */
 class Plugin extends PluginBase
 {
@@ -16,7 +16,7 @@ class Plugin extends PluginBase
     public function pluginDetails()
     {
         return [
-            'name'        => 'CalendarWidget',
+            'name'        => 'Calendar',
             'description' => 'No description provided yet...',
             'author'      => 'Captive Audience Inc.',
             'icon'        => 'icon-leaf'
