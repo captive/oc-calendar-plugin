@@ -126,7 +126,7 @@ class CalendarController extends ControllerBehavior
      * @param [type] $widget
      * @return void
      */
-    private function initColumnList($config)
+    protected function initColumnList($config)
     {
         /*
          * Prepare the list widget
@@ -135,7 +135,8 @@ class CalendarController extends ControllerBehavior
         $config->columns = $columnConfig->columns;
 
     }
-    private function initToolbar($config, $widget)
+
+    protected function initToolbar($config, $widget)
     {
         if (empty($config->toolbar)) return;
         $toolbarConfig = $this->makeConfig($config->toolbar);
@@ -162,7 +163,8 @@ class CalendarController extends ControllerBehavior
         }
         $this->toolbarWidget = $toolbarWidget;
     }
-    private function initFilter($config, $widget)
+
+    protected function initFilter($config, $widget)
     {
         if (empty($config->filter)) return;
 

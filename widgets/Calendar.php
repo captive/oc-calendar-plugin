@@ -46,7 +46,7 @@ class Calendar extends WidgetBase
     public $recordEnd;
     public $editable = false;
 
-    private $displayModeDictionary = [
+    protected $displayModeDictionary = [
         'month'=> 'month',
         'week' => 'agendaWeek',
         'day'  => 'agendaDay',
