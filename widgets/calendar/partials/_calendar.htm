@@ -1,11 +1,11 @@
 <div
-    class="field-calendar"
+    class="calendar-container"
     data-control="fieldcalendar"
     data-display-modes = '<?= $this->availableDisplayModes; ?>'
     data-alias="<?= $this->alias; ?>"
-    data-editable="<?= $this->editable; ?>">
+    data-editable="<?= !$this->previewMode; ?>">
 
-    <div class='field-calendar-control loading-indicator-container indicator-center'>
+    <div class="calendar-control loading-indicator-container indicator-center">
 
     </div>
 </div>

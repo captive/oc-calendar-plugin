@@ -1,8 +1,6 @@
 <?php namespace Captive\Calendar\Widgets;
 
 use Db;
-use Log;
-use Html;
 use Lang;
 use Config;
 use Backend;
@@ -11,40 +9,54 @@ use Response;
 use DateTimeZone;
 use Carbon\Carbon;
 use October\Rain\Html\Helper as HtmlHelper;
-use October\Rain\Router\Helper as RouterHelper;
 use System\Helpers\DateTime as DateTimeHelper;
-use System\Classes\PluginManager;
 use Backend\Classes\ListColumn;
 use Backend\Classes\WidgetBase;
-use October\Rain\Database\Model;
 use ApplicationException;
-use Captive\Calendar\Classes\Event as EventData;
 
+use Captive\Calendar\Classes\EventData;
+
+/**
+ * Calendar Widget
+ */
 class Calendar extends WidgetBase
 {
-    const PARTIAL_FILE = 'calendar';
     /**
-     * @var Model Form model object.
+     * @var Model Calendar model object
      */
     public $model;
 
     /**
-     * @var string Link for each record row. Replace :id with the record id.
+     * @var string Link for each calendar event. Replace :id with the record id.
      */
     public $recordUrl;
 
     /**
-     * @var string Click event for each record row. Replace :id with the record id.
+     * @var string Click event for each calendar event. Replace :id with the record id.
      */
     public $recordOnClick;
 
+    /**
+     * @var string
+     */
     public $recordId;
+
+    /**
+     * @var string
+     */
     public $recordTitle;
 
+    /**
+     * @var string
+     */
     public $recordStart;
 
+    /**
+     * @var string
+     */
     public $recordEnd;
-    public $editable = false;
+
+
 
     protected $displayModeDictionary = [
         'month'=> 'month',
@@ -64,32 +76,15 @@ class Calendar extends WidgetBase
      */
     protected $filterCallbacks = [];
 
-
-    /**
-     * @var string The context of this form, fields that do not belong
-     * to this context will not be shown.
-     */
-    public $context;
-
     /**
      * @inheritDoc
      */
     protected $defaultAlias = 'calendar';
 
     /**
-     * @var string Active session key, used for editing forms and deferred bindings.
-     */
-    public $sessionKey;
-
-    /**
      * @var bool Render this form with uneditable preview data.
      */
-    public $previewMode = false;
-
-    /**
-     * @var \Backend\Classes\WidgetManager
-     */
-    protected $widgetManager;
+    public $previewMode = true;
 
     public $searchTerm;
     public $searchMode;
@@ -103,15 +98,14 @@ class Calendar extends WidgetBase
     public $columns;
 
     public $searchableColumns = null;
-    public $visiableColumns = null;
-    public $calendarVisiableColumns = [];
+    public $visibleColumns = null;
+    public $calendarVisibleColumns = [];
 
     /**
      * @inheritDoc
      */
     public function init()
     {
-        //model/xxx/calendar.yaml
         $this->fillFromConfig([
             'columns',
             'recordUrl',
@@ -120,8 +114,8 @@ class Calendar extends WidgetBase
             'recordTitle',
             'recordStart',
             'recordEnd',
+            'previewMode',
             'availableDisplayModes',
-            'editable'
         ]);
 
         $this->initColumns();
@@ -133,7 +127,7 @@ class Calendar extends WidgetBase
             }
         }
         $this->availableDisplayModes = implode(",", $calendarControlRight);
-        $this->calendarVisiableColumns = [$this->recordTitle, $this->recordStart, $this->recordEnd];
+        $this->calendarVisibleColumns = [$this->recordTitle, $this->recordStart, $this->recordEnd];
 
         $this->initRecordUrl();
     }
@@ -150,7 +144,7 @@ class Calendar extends WidgetBase
             return;
         }
 
-        $this->recordUrl =Backend::url($this->recordUrl);
+        $this->recordUrl = Backend::url($this->recordUrl);
     }
     /**
      * Transfer the array column to ListColumn type
@@ -187,7 +181,7 @@ class Calendar extends WidgetBase
     {
         $this->prepareVars();
         $extraVars = [];
-        return $this->makePartial(static::PARTIAL_FILE, $extraVars);
+        return $this->makePartial('calendar', $extraVars);
     }
 
     /**
@@ -207,7 +201,7 @@ class Calendar extends WidgetBase
 
     protected function isColumnInCalendar($column)
     {
-        return in_array($column->columnName, $this->calendarVisiableColumns);
+        return in_array($column->columnName, $this->calendarVisibleColumns);
     }
 
     protected function isColumnRelated($column, $multi = false)
@@ -262,22 +256,22 @@ class Calendar extends WidgetBase
 
     protected function getVisibleRelationColumns()
     {
-        if ($this->visiableColumns != null) return $this->visiableColumns;
+        if ($this->visibleColumns != null) return $this->visibleColumns;
 
-        $defaultColumnNames = $this->calendarVisiableColumns;
+        $defaultColumnNames = $this->calendarVisibleColumns;
         $searchableColumns = $this->getSearchableColumns();
         $searchableColumnNames = [];
         foreach($searchableColumns  as $column) $searchableColumnNames[] = $column->columnName;
 
-        $visiableColumns = array_unique(array_merge($defaultColumnNames, $searchableColumnNames));
+        $visibleColumns = array_unique(array_merge($defaultColumnNames, $searchableColumnNames));
 
-        $this->visiableColumns = [];
+        $this->visibleColumns = [];
         foreach ($this->columns as $name => $column){
-            if(in_array($name , $visiableColumns )){
-                $this->visiableColumns[$name] = $column;
+            if(in_array($name , $visibleColumns )){
+                $this->visibleColumns[$name] = $column;
             }
         }
-        return $this->visiableColumns;
+        return $this->visibleColumns;
     }
 
     /**
@@ -403,8 +397,8 @@ class Calendar extends WidgetBase
                 }
             }
         }
-        $visiableColumns = $this->getVisibleRelationColumns();
-        foreach ($visiableColumns as $column) {
+        $visibleColumns = $this->getVisibleRelationColumns();
+        foreach ($visibleColumns as $column) {
 
             // If useRelationCount is enabled, eager load the count of the relation into $relation_count
             if ($column->relation && @$column->config['useRelationCount']) {
@@ -460,7 +454,7 @@ class Calendar extends WidgetBase
         /*
          * Custom select queries
          */
-        foreach ($visiableColumns as $column) {
+        foreach ($visibleColumns as $column) {
             if (!isset($column->sqlSelect) || !$this->isColumnInCalendar($column)) {
                 continue;
             }
@@ -530,11 +524,11 @@ class Calendar extends WidgetBase
         foreach ($records as $record) {
             $id = $record->{$this->recordId};
             $eventData = new EventData([
-                'id' => $id,
-                'url' => str_replace(':id', $id, $this->recordUrl),
+                'id'    => $id,
+                'url'   => str_replace(':id', $id, $this->recordUrl),
                 'title' => $record->{$this->recordTitle},
                 'start' => $record->{$this->recordStart},
-                'end' => $record->{$this->recordEnd}
+                'end'   => $record->{$this->recordEnd}
             ], $timeZone);
             $list[] = $eventData->toArray();
         }

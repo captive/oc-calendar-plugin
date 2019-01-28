@@ -1,0 +1,21 @@
+{
+    "name": "captive/oc-calendar-plugin",
+    "type": "october-plugin",
+    "description": "Calendar widget and ControllerBehavior for OctoberCMS",
+    "homepage": "https://github.com/Captive/oc-calendar-plugin",
+    "keywords": ["october", "octobercms", "calendar", "fullcalendar", "widget", "behavior"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Eric Yang",
+            "email": "ericy@captive.ca"
+        },
+        {
+            "name": "Luke Towers",
+            "email": "octobercms@luketowers.ca"
+        }
+    ],
+    "require": {
+        "composer/installers": "~1.0"
+    }
+}

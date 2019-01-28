@@ -1,67 +1,46 @@
 <?php namespace Captive\Calendar\Behaviors;
 
-use Db;
 use Str;
 use Lang;
-use Flash;
-use Event;
-use Redirect;
-use Backend;
+use Backend\Widgets\Filter as FilterWidget;
+use Backend\Widgets\Toolbar as ToolbarWidget;
+use Captive\Calendar\Widgets\Calendar as CalendarWidget;
 use Backend\Classes\ControllerBehavior;
-use October\Rain\Html\Helper as HtmlHelper;
-use October\Rain\Router\Helper as RouterHelper;
 use ApplicationException;
-use Exception;
 
 class CalendarController extends ControllerBehavior
 {
     /**
-     * @var string Default context for "create" pages.
-     */
-    const CONTEXT_CREATE = 'create';
-
-    /**
-     * @var string Default context for "update" pages.
-     */
-    const CONTEXT_UPDATE = 'update';
-
-    /**
-     * @var string Default context for "preview" pages.
-     */
-    const CONTEXT_PREVIEW = 'preview';
-
-    /**
-     * @var string The context to pass to the form widget.
-     */
-    protected $context;
-
-
-    /**
-     * @var \Backend\Classes\WidgetBase Reference to the toolbar widget objects.
+     * @var ToolbarWidget Reference to the toolbar widget instance
      */
     protected $toolbarWidget = null;
 
     /**
-     * @var \Backend\Classes\WidgetBase Reference to the filter widget objects.
+     * @var FilterWidget Reference to the filter widget instance
      */
     protected $filterWidget = null;
 
+    /**
+     * @var CalendarWidget
+     */
     protected $calendarWidget = null;
 
     /**
-     * @var Model The initialized model used by the form.
+     * @var Model The initialized model used by the behavior.
      */
     protected $model;
 
-    protected $definition = 'calendar';
-
+    /**
+     * @var string The primary calendar alias to use, default 'calendar'
+     */
+    protected $primaryDefinition = 'calendar';
 
     /**
      * @var array Configuration values that must exist when applying the primary config file.
      * - modelClass: Class name for the model
-     * - list: list field definitions
+     * - searchList: list field definitions for the search widget
      */
-    protected $requiredConfig = ['modelClass', 'list'];
+    protected $requiredConfig = ['modelClass', 'searchList'];
 
     /**
      * Behavior constructor
@@ -71,48 +50,50 @@ class CalendarController extends ControllerBehavior
     {
         parent::__construct($controller);
 
-
-        /*
-         * Build configuration
-         */
+        // Build the configuration
         $this->config = $this->makeConfig($controller->calendarConfig, $this->requiredConfig);
         $this->config->modelClass = Str::normalizeClassName($this->config->modelClass);
     }
 
     /**
-     * Index Controller action.
+     * Calendar Controller action.
+     *
      * @return void
      */
     public function calendar()
     {
-
         $this->controller->pageTitle = $this->controller->pageTitle ? : Lang::get($this->getConfig(
             'title',
-            'Calendar'
+            'captive.calendar::lang.behaviors.calendar.title'
         ));
         $this->controller->bodyClass = 'slim-container';
         $this->makeCalendar();
     }
 
-    public function makeCalendar($context = null)
+    /**
+     * Creates the Calendar widget used by this behavior
+     *
+     * @return CalendarWidget
+     */
+    public function makeCalendar()
     {
-        if ($context !== null) {
-            $this->context = $context;
-        }
         $model = $this->controller->calendarCreateModelObject();
 
         $config = $this->config;
         $config->model = $model;
-        $config->alias = $this->definition;
-        $this->initColumnList($config);
+        $config->alias = $this->primaryDefinition;
 
+        // Prepare the calendar columns (used for searching)
+        $columnConfig = $this->makeConfig($config->searchList);
+        $config->columns = $columnConfig->columns;
 
-        $widget = $this->makeWidget('\Captive\Calendar\Widgets\Calendar', $config);
+        // Initialize the Calendar widget
+        $widget = $this->makeWidget(CalendarWidget::class, $config);
         $widget->model = $model;
         $widget->bindToController();
         $this->calendarWidget = $widget;
 
-
+        // Initialize the Toolbar & Filter widgets
         $this->initToolbar($config, $widget);
         $this->initFilter($config, $widget);
 
@@ -120,33 +101,28 @@ class CalendarController extends ControllerBehavior
     }
 
     /**
-     * Read the "list" config in config_calendar.yaml, these columns can be used for search
+     * Prepare the Toolbar widget if necessary
      *
-     * @param [type] $config
-     * @param [type] $widget
+     * @param object $config
+     * @param CalendarWidget $widget
      * @return void
      */
-    protected function initColumnList($config)
-    {
-        /*
-         * Prepare the list widget
-         */
-        $columnConfig = $this->makeConfig($config->list);
-        $config->columns = $columnConfig->columns;
-
-    }
-
     protected function initToolbar($config, $widget)
     {
-        if (empty($config->toolbar)) return;
+        if (empty($config->toolbar)) {
+            return;
+        }
+
+        // Prepare the config and intialize the Toolbar widget
         $toolbarConfig = $this->makeConfig($config->toolbar);
         $toolbarConfig->alias = $widget->alias . 'Toolbar';
-        $toolbarWidget = $this->makeWidget('Backend\Widgets\Toolbar', $toolbarConfig);
+        $toolbarWidget = $this->makeWidget(ToolbarWidget::class, $toolbarConfig);
         $toolbarWidget->bindToController();
         $toolbarWidget->cssClasses[] = 'list-header';
+
         /*
-        * Link the Search Widget to the List Widget
-        */
+         * Link the Search widget to the Calendar widget
+         */
         if ($searchWidget = $toolbarWidget->getSearchWidget()) {
             $searchWidget->bindEvent('search.submit', function () use ($widget, $searchWidget) {
                 $widget->setSearchTerm($searchWidget->getActiveTerm());
@@ -161,59 +137,61 @@ class CalendarController extends ControllerBehavior
             // Find predefined search term
             $widget->setSearchTerm($searchWidget->getActiveTerm());
         }
+
         $this->toolbarWidget = $toolbarWidget;
     }
 
+    /**
+     * Prepare the Filter widget if necessary
+     *
+     * @param object $config
+     * @param CalendarWidget $widget
+     * @return void
+     */
     protected function initFilter($config, $widget)
     {
-        if (empty($config->filter)) return;
+        if (empty($config->filter)) {
+            return;
+        }
 
         $widget->cssClasses[] = 'list-flush';
 
+        // Prepare the config and intialize the Toolbar widget
         $filterConfig = $this->makeConfig($config->filter);
         $filterConfig->alias = $widget->alias . 'Filter';
-        $filterWidget = $this->makeWidget('Backend\Widgets\Filter', $filterConfig);
+        $filterWidget = $this->makeWidget(FilterWidget::class, $filterConfig);
         $filterWidget->bindToController();
 
-
         /*
-        * Filter the Calendar when the scopes are changed
-        */
+         * Filter the Calendar when the scopes are changed
+         */
         $filterWidget->bindEvent('filter.update', function () use ($widget, $filterWidget) {
             return $widget->onFilter();
         });
+
         // Apply predefined filter values
         $widget->addFilter([$filterWidget, 'applyAllScopesToQuery']);
         $this->filterWidget = $filterWidget;
-
-
     }
 
     /**
-     * Internal method used to prepare the form model object.
+     * Creates a new instance of a calendar model. This logic can be changed by overriding it in the controller.
      *
-     * @return October\Rain\Database\Model
-     */
-    protected function createModel()
-    {
-        $class = $this->config->modelClass;
-        return new $class;
-    }
-    /**
-     * Creates a new instance of a form model. This logic can be changed
-     * by overriding it in the controller.
      * @return Model
      */
     public function calendarCreateModelObject()
     {
-        return $this->createModel();
+        $class = $this->config->modelClass;
+        return new $class;
     }
 
+    /**
+     * Render the calendar widget
+     */
     public function calendarRender($options = [])
     {
-
         if (empty($this->calendarWidget)) {
-            throw new ApplicationException('Calendar behavior has not been initialized');
+            throw new ApplicationException(Lang::get('captive.calendar::lang.behaviors.calendar.behavior_not_ready'));
         }
 
         if (!empty($options['readOnly']) || !empty($options['disabled'])){
@@ -224,27 +202,24 @@ class CalendarController extends ControllerBehavior
             $this->calendarWidget->previewMode = $options['preview'];
         }
 
-        if ($this->calendarWidget->previewMode ){
-            $this->calendarWidget->editable = false;
-        }
-
-
-        $vars = [
-            'toolbar' => $this->toolbarWidget,
-            'filter' => $this->filterWidget,
+        return $this->calendarMakePartial('container', [
+            'toolbar'  => $this->toolbarWidget,
+            'filter'   => $this->filterWidget,
             'calendar' => $this->calendarWidget,
-        ];
-
-
-
-        // return $this->calendarWidget->render($options);
-        return $this->calendarMakePartial('container', $vars);
+        ]);
     }
 
-    public function calendarMakepartial($partial, $params = [])
+    /**
+     * Render the requested partial, providing opportunity for the controller to take over
+     *
+     * @param string $partial
+     * @param array $params
+     * @return string
+     */
+    public function calendarMakePartial($partial, $params = [])
     {
         $contents = $this->controller->makePartial('calendar_' . $partial, $params, false);
-        if (! $contents) {
+        if (!$contents) {
             $contents = $this->makePartial($partial, $params);
         }
         return $contents;

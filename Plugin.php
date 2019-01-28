@@ -16,31 +16,10 @@ class Plugin extends PluginBase
     public function pluginDetails()
     {
         return [
-            'name'        => 'Calendar',
-            'description' => 'No description provided yet...',
+            'name'        => 'captive.calendar::lang.plugin.name',
+            'description' => 'captive.calendar::lang.plugin.description',
             'author'      => 'Captive Audience Inc.',
-            'icon'        => 'icon-leaf'
+            'icon'        => 'icon-calendar'
         ];
     }
-
-    /**
-     * Register method, called when the plugin is first registered.
-     *
-     * @return void
-     */
-    public function register()
-    {
-
-    }
-
-    /**
-     * Boot method, called right before the request route.
-     *
-     * @return array
-     */
-    public function boot()
-    {
-
-    }
-
 }

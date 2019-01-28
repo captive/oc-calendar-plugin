@@ -1,0 +1,50 @@
+# ===================================
+#  Calendar Behavior Config
+# ===================================
+
+# Model to use for getting the records to display on the calendar
+modelClass: Author\Plugin\Models\Event
+
+# Search columns
+# Used for configuration of additional columns to search by
+searchList: $/author/plugin/models/event/columns.yaml
+
+# Record URL
+recordUrl: author/plugins/events/update/:id
+
+# Record on click
+# @see custom.calendar.js sample
+# recordOnClick: $.oc.eventController.onEventClick(:id)
+
+# The property to use as the title displayed on the calendar
+recordTitle: name
+
+# The property to use as the id (primary key) to pass to recordUrl and recordOnClick
+recordId: event_id
+
+# The property to use as the start time for the record
+recordStart: start_time
+
+# The property to use as the end time for the record
+recordEnd: end_time
+
+# Available display modes to be supported in this instance
+availableDisplayModes: [month, week, day, list]
+
+# Flag for whether calendar is read only or editable
+previewMode: true
+
+# load one month of records at a time, ensure they stay loaded between month pages
+
+# Toolbar widget configuration
+toolbar:
+    # Partial for toolbar buttons
+    buttons: calendar_toolbar
+
+    # Search widget configuration
+    search:
+        prompt: backend::lang.list.search_prompt
+filter: calendar_filter.yaml
+
+# when filter gets applied, clear the client's cache of events, essentially start them over
+# if they had just loaded this page / month with the current filters applied

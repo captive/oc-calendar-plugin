@@ -52,7 +52,7 @@
     }
 
     Calendar.prototype.initCalendarControl = function(){
-        const $calendar = this.$el.find('.field-calendar-control');
+        const $calendar = this.$el.find('.calendar-container');
         const self = this;
         const timezone = $('meta[name="backend-timezone"]').attr('content');
         this.calendarControl = new FullCalendar.Calendar($calendar[0], {
@@ -166,12 +166,12 @@
     }
 
 
-    // FIELD NOTES PLUGIN DEFINITION
+    // CALENDAR CONTROL PLUGIN DEFINITION
     // ============================
 
-    const old = $.fn.fieldCalendar
+    const old = $.fn.calendarControl
 
-    $.fn.fieldCalendar = function (option) {
+    $.fn.calendarControl = function (option) {
         var args = Array.prototype.slice.call(arguments, 1),
             result
         this.each(function () {
@@ -186,34 +186,21 @@
         return result ? result : this
     }
 
-    $.fn.fieldCalendar.Constructor = Calendar
+    $.fn.calendarControl.Constructor = Calendar
 
-    // FIELD CALENDAR NO CONFLICT
+    // CALENDAR CONTROL NO CONFLICT
     // =================
 
-    $.fn.fieldCalendar.noConflict = function () {
-        $.fn.fieldCalendar = old
+    $.fn.calendarControl.noConflict = function () {
+        $.fn.calendarControl = old
         return this
     }
 
-    // FIELD CALENDAR DATA-API
+    // CALENDAR CONTROL DATA-API
     // ===============
 
     $(document).render(function () {
-        $('[data-control="fieldcalendar"]').fieldCalendar()
+        $('[data-control="calendar"]').calendarControl()
     });
 
 }(window.jQuery);
-
-// Sample for config_calendar.yaml -> recordOnClick
-// + function ($) {
-//     "use strict";
-//     var EventController = function () {
-
-//         this.onEventClick = function (eventId) {
-//             alert('eventID  = '+ eventId);
-//         }
-
-//     }
-//     $.oc.evnetController = new EventController;
-// }(window.jQuery);
