@@ -52,7 +52,7 @@
     }
 
     Calendar.prototype.initCalendarControl = function(){
-        const $calendar = this.$el.find('.calendar-container');
+        const $calendar = this.$el.find('.calendar-control');
         const self = this;
         const timezone = $('meta[name="backend-timezone"]').attr('content');
         this.calendarControl = new FullCalendar.Calendar($calendar[0], {
