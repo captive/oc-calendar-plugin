@@ -9,7 +9,7 @@ use Response;
 use DateTimeZone;
 use Carbon\Carbon;
 use October\Rain\Html\Helper as HtmlHelper;
-use System\Helpers\DateTime as DateTimeHelper;
+use October\Rain\Router\Helper as RouterHelper;
 use Backend\Classes\ListColumn;
 use Backend\Classes\WidgetBase;
 use ApplicationException;
@@ -21,10 +21,19 @@ use Captive\Calendar\Classes\EventData;
  */
 class Calendar extends WidgetBase
 {
+    //
+    // Configurable
+    //
+
     /**
      * @var Model Calendar model object
      */
     public $model;
+
+    /**
+     * @var mixed The list configuration for additional table columns to search by (uses columns.yaml format)
+     */
+    public $searchList;
 
     /**
      * @var string Link for each calendar event. Replace :id with the record id.
@@ -37,41 +46,35 @@ class Calendar extends WidgetBase
     public $recordOnClick;
 
     /**
-     * @var string
+     * @var string The model property to use as the title displayed on the calendar
      */
-    public $recordId;
+    public $recordTitle = 'name';
 
     /**
-     * @var string
+     * @var string The model property to use as the start time for the record
      */
-    public $recordTitle;
+    public $recordStart = 'start_at';
 
     /**
-     * @var string
+     * @var string The model property to use as the end time for the record
      */
-    public $recordStart;
+    public $recordEnd = 'end_at';
 
     /**
-     * @var string
+     * @var array Display modes to allow ['month', 'week', 'day', 'list']
      */
-    public $recordEnd;
-
-
-
-    protected $displayModeDictionary = [
-        'month'=> 'month',
-        'week' => 'agendaWeek',
-        'day'  => 'agendaDay',
-        'list' => 'listMonth'
-    ];
-
     public $availableDisplayModes = [];
 
     /**
      * @var array Calendar of CSS classes to apply to the Calendar container element
      */
     public $cssClasses = [];
-        /**
+
+    //
+    // INTERNAL
+    //
+
+    /**
      * @var array Collection of functions to apply to each list query.
      */
     protected $filterCallbacks = [];
@@ -86,16 +89,14 @@ class Calendar extends WidgetBase
      */
     public $previewMode = true;
 
+    /**
+     * @var array Instantiated search columns ['name' => ListColumn]
+     */
+    protected $searchColumns = [];
+
     public $searchTerm;
     public $searchMode;
     public $searchScope;
-
-    /**
-     * Column config from columns.yaml
-     *
-     * @var array
-     */
-    public $columns;
 
     public $searchableColumns = null;
     public $visibleColumns = null;
@@ -118,46 +119,37 @@ class Calendar extends WidgetBase
             'availableDisplayModes',
         ]);
 
-        $this->initColumns();
-
-        $calendarControlRight = [];
-        foreach ($this->availableDisplayModes as $modeKey) {
-            if(array_key_exists($modeKey, $this->displayModeDictionary)){
-                $calendarControlRight[] = $this->displayModeDictionary[$modeKey];
+        // Initialize the search columns
+        $list = $this->makeConfig($this->searchList);
+        $columns = [];
+        if (!empty($list->columns)) {
+            foreach ($list->columns as $name => $config) {
+                $columns[$name] = $this->makeListColumn($name, $config);
             }
         }
-        $this->availableDisplayModes = implode(",", $calendarControlRight);
-        $this->calendarVisibleColumns = [$this->recordTitle, $this->recordStart, $this->recordEnd];
+        $this->searchColumns = $columns;
 
-        $this->initRecordUrl();
+        $this->calendarVisibleColumns = [$this->recordTitle, $this->recordStart, $this->recordEnd];
     }
 
-    protected function initRecordUrl()
+    /**
+     * Returns the record URL address for a calendar event.
+     * @param  Model $record
+     * @return string
+     */
+    public function getRecordUrl($record)
     {
         if (!empty($this->recordOnClick)) {
-            $this->recordUrl = $this->recordOnClick;
-            return;
+            // return 'javascript:;';
+            return $this->recordOnClick;
         }
 
-        if(empty($this->recordUrl)){
-            $this->recordUrl = 'javascript:;';
-            return;
+        if (!isset($this->recordUrl)) {
+            return null;
         }
 
-        $this->recordUrl = Backend::url($this->recordUrl);
-    }
-    /**
-     * Transfer the array column to ListColumn type
-     *
-     * @return void
-     */
-    protected function initColumns()
-    {
-        $listColumns = [];
-        foreach ($this->columns as $columnName => $config) {
-            $listColumns[$columnName] = $this->makeListColumn($columnName, $config);
-        }
-        $this->columns = $listColumns;
+        $url = RouterHelper::replaceParameters($record, $this->recordUrl);
+        return Backend::url($url);
     }
 
     /**
@@ -165,23 +157,59 @@ class Calendar extends WidgetBase
      */
     protected function loadAssets()
     {
-        $this->addCss(['css/fullcalendar.css' ,'less/calendar.less'], 'core');
+        $this->addCss(['css/fullcalendar.css', 'less/calendar.less'], 'captive.calendar');
         $this->addJs('js/fullcalendar.js', '4.0.0-alpha.4');
         // @see https://fullcalendar.io/docs/v4/timeZone
         $this->addJs('js/plugins/moment-timezone.min.js', '4.0.0-alpha.4');
-        $this->addJs('js/october.calendar.js', 'core');
+        $this->addJs('js/october.calendar.js', 'captive.calendar');
     }
 
+    /**
+     * @inheritDoc
+     */
     public function prepareVars()
     {
+        $this->vars['availableDisplayModes'] = $this->getDisplayModes();
         $this->vars['cssClasses'] = implode(' ', $this->cssClasses);
     }
 
-    public function render($options = null)
+    /**
+     * Get the fullcalendar.js display modes to be used
+     *
+     * @return array ['month', 'agendaWeek', 'agendaDay', 'listMonth']
+     */
+    protected function getDisplayModes()
+    {
+        // Convert our display modes to FullCalendar display modes
+        if (!is_array($this->availableDisplayModes)) {
+            $this->availableDisplayModes = [$this->availableDisplayModes];
+        }
+
+        $fullCalendarModes = [
+            'month' => 'month',
+            'week'  => 'agendaWeek',
+            'day'   => 'agendaDay',
+            'list'  => 'listMonth'
+        ];
+
+        $selectedModes = [];
+        foreach ($this->availableDisplayModes as $mode) {
+            if (!empty($fullCalendarModes[$mode])) {
+                $selectedModes[] = $fullCalendarModes[$mode];
+            }
+        }
+       return implode(',', $selectedModes);
+    }
+
+    /**
+     * Render this Calendar widget
+     *
+     * @return string Rendered contents
+     */
+    public function render()
     {
         $this->prepareVars();
-        $extraVars = [];
-        return $this->makePartial('calendar', $extraVars);
+        return $this->makePartial('calendar');
     }
 
     /**
@@ -213,7 +241,7 @@ class Calendar extends WidgetBase
         if (!$this->model->hasRelation($column->relation)) {
             throw new ApplicationException(Lang::get(
                 'backend::lang.model.missing_relation',
-                ['class'=>get_class($this->model), 'relation'=>$column->relation]
+                ['class' => get_class($this->model), 'relation' => $column->relation]
             ));
         }
 
@@ -243,7 +271,7 @@ class Calendar extends WidgetBase
         if ($this->searchableColumns != null) return $this->searchableColumns;
         $searchable = [];
 
-        foreach ($this->columns as $column) {
+        foreach ($this->searchColumns as $column) {
             if (empty($column->searchable)) {
                 continue;
             }
@@ -266,7 +294,7 @@ class Calendar extends WidgetBase
         $visibleColumns = array_unique(array_merge($defaultColumnNames, $searchableColumnNames));
 
         $this->visibleColumns = [];
-        foreach ($this->columns as $name => $column){
+        foreach ($this->searchColumns as $name => $column){
             if(in_array($name , $visibleColumns )){
                 $this->visibleColumns[$name] = $column;
             }
@@ -305,17 +333,19 @@ class Calendar extends WidgetBase
     }
 
     /**
-     * Creates a list column object from it's name and configuration.
+     * Creates a ListColumn object from its name and configuration.
+     *
+     * @param string $name
+     * @param array $config
+     * @return ListColumn
      */
     protected function makeListColumn($name, $config)
     {
         if (is_string($config)) {
             $label = $config;
-        }
-        elseif (isset($config['label'])) {
+        } elseif (isset($config['label'])) {
             $label = $config['label'];
-        }
-        else {
+        } else {
             $label = studly_case($name);
         }
 
@@ -363,7 +393,24 @@ class Calendar extends WidgetBase
         $joins = [];
         $withs = [];
 
-        $this->fireSystemEvent('backend.calendar.extendQueryBefore', [$query]);
+        /**
+         * @event captive.calendar.extendQueryBefore
+         * Provides an opportunity to modify the `$query` object before the Calendar widget applies its scopes to it.
+         *
+         * Example usage:
+         *
+         *     Event::listen('captive.calendar.extendQueryBefore', function($calendarWidget, $query) {
+         *         $query->whereNull('deleted_at');
+         *     });
+         *
+         * Or
+         *
+         *     $calendarWidget->bindEvent('calendar.extendQueryBefore', function ($query) {
+         *         $query->whereNull('deleted_at');
+         *     });
+         *
+         */
+        $this->fireSystemEvent('captive.calendar.extendQueryBefore', [$query]);
 
         /*
          * Prepare searchable column names
@@ -509,7 +556,25 @@ class Calendar extends WidgetBase
          */
         $query->addSelect($selects);
 
-        if ($event = $this->fireSystemEvent('backend.calendar.extendQuery', [$query])) {
+        /**
+         * @event captive.calendar.extendQuery
+         * Provides an opportunity to modify and / or return the `$query` object after the Calendar widget has applied its scopes to it and before it's used to get the records.
+         *
+         * Example usage:
+         *
+         *     Event::listen('captive.calendar.extendQuery', function($calendarWidget, $query) {
+         *         $newQuery = MyModel::newQuery();
+         *         return $newQuery;
+         *     });
+         *
+         * Or
+         *
+         *     $calendarWidget->bindEvent('calendar.extendQuery', function ($query) {
+         *         $query->whereNull('deleted_at');
+         *     });
+         *
+         */
+        if ($event = $this->fireSystemEvent('captive.calendar.extendQuery', [$query])) {
             return $event;
         }
         return $query;
@@ -522,10 +587,8 @@ class Calendar extends WidgetBase
 
         $timeZone = new DateTimeZone(Config::get('app.timezone','UTC'));
         foreach ($records as $record) {
-            $id = $record->{$this->recordId};
             $eventData = new EventData([
-                'id'    => $id,
-                'url'   => str_replace(':id', $id, $this->recordUrl),
+                'url'   => $this->getRecordUrl($record),
                 'title' => $record->{$this->recordTitle},
                 'start' => $record->{$this->recordStart},
                 'end'   => $record->{$this->recordEnd}
@@ -592,6 +655,7 @@ class Calendar extends WidgetBase
         // $this->currentPageNumber = 1;
         return $this->onRefresh();
     }
+
     //
     // Filtering
     //
@@ -600,6 +664,5 @@ class Calendar extends WidgetBase
     {
         $this->filterCallbacks[] = $filter;
     }
-
 }
 

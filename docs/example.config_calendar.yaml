@@ -10,17 +10,14 @@ modelClass: Author\Plugin\Models\Event
 searchList: $/author/plugin/models/event/columns.yaml
 
 # Record URL
-recordUrl: author/plugins/events/update/:id
+recordUrl: author/plugins/events/update/:event_id
 
 # Record on click
 # @see custom.calendar.js sample
-# recordOnClick: $.oc.eventController.onEventClick(:id)
+# recordOnClick: $.oc.eventController.onEventClick(:event_id)
 
 # The property to use as the title displayed on the calendar
 recordTitle: name
-
-# The property to use as the id (primary key) to pass to recordUrl and recordOnClick
-recordId: event_id
 
 # The property to use as the start time for the record
 recordStart: start_time

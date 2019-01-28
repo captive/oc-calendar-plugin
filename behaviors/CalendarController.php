@@ -83,10 +83,6 @@ class CalendarController extends ControllerBehavior
         $config->model = $model;
         $config->alias = $this->primaryDefinition;
 
-        // Prepare the calendar columns (used for searching)
-        $columnConfig = $this->makeConfig($config->searchList);
-        $config->columns = $columnConfig->columns;
-
         // Initialize the Calendar widget
         $widget = $this->makeWidget(CalendarWidget::class, $config);
         $widget->model = $model;

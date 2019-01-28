@@ -2,86 +2,101 @@
 
 use DateTime;
 use DateTimeZone;
+use ApplicationException;
+
 /**
- * [
- *  {
- *          "id": "999",
- *           "title": "Repeating Event",
- *           "start": "2019-01-09T16:00:00-05:00"
- *  }
- * ]
+ * Event Data Class, used by FullCalendar.js
+ *
+ * JSON (toArray) Format:
+ * {
+ *      "title": "Repeating Event",
+ *      "start": "2019-01-09T16:00:00-05:00"
+ * }
  */
 class EventData
 {
     // Tests whether the given ISO8601 string has a time-of-day or not
     const ALL_DAY_REGEX = '/^\d{4}-\d\d-\d\d$/'; // matches strings like "2013-12-29"
 
+    /**
+     * @var string Title of the event
+     */
     public $title;
-    public $allDay; // a boolean
-    public $start; // a DateTime
-    public $end; // a DateTime, or null
-    public $properties = array(); // an array of other misc properties
 
+    /**
+     * @var boolean Flag for whether the event is all day or not
+     */
+    public $allDay;
 
-    // Constructs an Event object from the given array of key=>values.
-    // You can optionally force the timeZone of the parsed dates.
-    public function __construct($array, $timeZone = null)
+    /**
+     * @var DateTime The event start
+     */
+    public $start;
+
+    /**
+     * @var DateTime|null The event end
+     */
+    public $end;
+
+    /**
+     * @var array Other additional properties
+     */
+    public $properties = [];
+
+    /**
+     * Constructs an EventData object from the provided configuration
+     *
+     * @param array $config ['title' => '', 'allDay' => '', 'start' => '', 'end' => '']
+     * @param DateTimeZone|null $timeZone The timezone to force
+     */
+    public function __construct(array $config, $timeZone = null)
     {
-        $this->title = $array['title'];
-
-        if (isset($array['allDay'])) {
-            // allDay has been explicitly specified
-            $this->allDay = (bool)$array['allDay'];
-        } else {
-            // Guess allDay based off of ISO8601- date strings
-            $this->allDay = preg_match(self::ALL_DAY_REGEX, $array['start']) && (!isset($array['end']) || preg_match(self::ALL_DAY_REGEX, $array['end']));
+        $required = ['title', 'start'];
+        foreach ($required as $property) {
+            if (empty($config[$property])) {
+                throw new ApplicationException("$property is required when instancing an EventData object");
+            }
         }
 
+        // Set the title
+        $this->title = $config['title'];
+
+        // Guess the allDay property
+        if (isset($config['allDay'])) {
+            $this->allDay = (bool) $config['allDay'];
+        } else {
+            $this->allDay = preg_match(self::ALL_DAY_REGEX, $config['start']) && (!isset($config['end']) || preg_match(self::ALL_DAY_REGEX, $config['end']));
+        }
+
+        // If dates are allDay, we want to parse them in UTC to avoid DST issues.
         if ($this->allDay) {
-            // If dates are allDay, we want to parse them in UTC to avoid DST issues.
             $timeZone = null;
         }
 
         // Parse dates
-        $this->start = parseDateTime($array['start'], $timeZone);
-        $this->end = isset($array['end']) ? parseDateTime($array['end'], $timeZone) : null;
+        $this->start = $this->parseDateTime($config['start'], $timeZone);
+        $this->end = isset($config['end']) ? $this->parseDateTime($config['end'], $timeZone) : null;
 
-        // Record misc properties
-        foreach ($array as $name => $value) {
-            if (!in_array($name, array('title', 'allDay', 'start', 'end'))) {
+        // Store other properties
+        foreach ($config as $name => $value) {
+            if (!in_array($name, ['title', 'allDay', 'start', 'end'])) {
                 $this->properties[$name] = $value;
             }
         }
     }
 
-
-    // Returns whether the date range of our event intersects with the given all-day range.
-    // $rangeStart and $rangeEnd are assumed to be dates in UTC with 00:00:00 time.
-    public function isWithinDayRange($rangeStart, $rangeEnd)
-    {
-
-    // Normalize our event's dates for comparison with the all-day range.
-        $eventStart = stripTime($this->start);
-
-        if (isset($this->end)) {
-            $eventEnd = stripTime($this->end); // normalize
-        } else {
-            $eventEnd = $eventStart; // consider this a zero-duration event
-        }
-
-        // Check if the two whole-day ranges intersect.
-        return $eventStart < $rangeEnd && $eventEnd >= $rangeStart;
-    }
-
-
-    // Converts this Event object back to a plain data array, to be used for generating JSON
+    /**
+     * Convert the EventData object into a plain array to be used to pass to FullCalendar.js as JSON
+     *
+     * @return array
+     */
     public function toArray()
     {
+        // Get the defined additional properties
+        $properties = $this->properties;
 
-    // Start with the misc properties (don't worry, PHP won't affect the original array)
-        $array = $this->properties;
-
-        $array['title'] = $this->title;
+        // Get the title
+        $properties['title'] = $this->title;
 
         // Figure out the date format. This essentially encodes allDay into the date string.
         if ($this->allDay) {
@@ -90,41 +105,34 @@ class EventData
             $format = 'c'; // full ISO8601 output, like "2013-12-29T09:00:00+08:00"
         }
 
-        // Serialize dates into strings
-        $array['start'] = $this->start->format($format);
+        // Add the dates
+        $properties['start'] = $this->start->format($format);
         if (isset($this->end)) {
-            $array['end'] = $this->end->format($format);
+            $properties['end'] = $this->end->format($format);
         }
 
-        return $array;
+        return $properties;
     }
-}
 
-
-// Date Utilities
-//----------------------------------------------------------------------------------------------
-
-
-// Parses a string into a DateTime object, optionally forced into the given timeZone.
-function parseDateTime($string, $timeZone = null)
-{
-    $date = new DateTime(
-        $string,
-        $timeZone ? $timeZone : new DateTimeZone('UTC')
-        // Used only when the string is ambiguous.
-        // Ignored if string has a timeZone offset in it.
-    );
-    if ($timeZone) {
-        // If our timeZone was ignored above, force it.
-        $date->setTimezone($timeZone);
+    /**
+     * Parses a string into a DateTime object, optionally forced into the given timeZone.
+     *
+     * @param string $dateTime
+     * @param DateTimeZone $timeZone
+     * @return DateTime
+     */
+    protected function parseDateTime(string $dateTime, $timeZone = null)
+    {
+        $date = new DateTime(
+            $dateTime,
+            $timeZone ? $timeZone : new DateTimeZone('UTC')
+            // Used only when the string is ambiguous.
+            // Ignored if $dateTime has a timeZone offset in it.
+        );
+        if ($timeZone) {
+            // If our timeZone was ignored above, force it.
+            $date->setTimezone($timeZone);
+        }
+        return $date;
     }
-    return $date;
-}
-
-
-// Takes the year/month/date values of the given DateTime and converts them to a new DateTime,
-// but in UTC.
-function stripTime($datetime)
-{
-    return new DateTime($datetime->format('Y-m-d'));
 }
