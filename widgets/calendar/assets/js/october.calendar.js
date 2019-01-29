@@ -93,9 +93,6 @@
     };
 
     Calendar.prototype.onPrevNextButtonClick = function (fetchInfo, successCallback, failureCallback){
-        console.log(fetchInfo);
-        console.log(fetchInfo.start.valueOf());
-        console.log(fetchInfo.end.valueOf());
         this.refreshEvents(fetchInfo.start.getTime() / 1000,
             fetchInfo.end.getTime() / 1000, fetchInfo.timeZone, successCallback, failureCallback);
 
