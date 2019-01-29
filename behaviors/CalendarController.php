@@ -168,6 +168,8 @@ class CalendarController extends ControllerBehavior
         // Apply predefined filter values
         $widget->addFilter([$filterWidget, 'applyAllScopesToQuery']);
         $this->filterWidget = $filterWidget;
+        $widget->filterWidget = $this->filterWidget;
+
     }
 
     /**

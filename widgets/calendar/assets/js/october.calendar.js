@@ -10,7 +10,6 @@
         this.calendarControl =  null;
         this.$loadContainer = this.$el.find('.loading-indicator-container:first');
 
-
         $.oc.foundation.controlUtils.markDisposable(element)
         Base.call(this)
         this.init()
@@ -35,7 +34,8 @@
         this.$el.on('dispose-control', this.proxy(this.dispose));
         $(document).on('ajaxComplete', this.proxy(this.onFilterUpdate));
 
-    }
+    };
+
     Calendar.prototype.dispose = function () {
 
         $(document).off('ajaxComplete', this.proxy(this.onFilterUpdate));
@@ -81,12 +81,48 @@
             eventClick: function(info){
                 self.onEventClick(info);
             },
+            events: function (fetchInfo, successCallback, failureCallback){
+                self.onPrevNextButtonClick(fetchInfo, successCallback, failureCallback);
+            }
 
         });
         this.calendarControl.render();
-        this.fetchEvents();
+        // this.fetchEvents();
         this.calendarControl.on('dateClick', this.proxy(this.onDateClick));
 
+    };
+
+    Calendar.prototype.onPrevNextButtonClick = function (fetchInfo, successCallback, failureCallback){
+        console.log(fetchInfo);
+        console.log(fetchInfo.start.valueOf());
+        console.log(fetchInfo.end.valueOf());
+        this.refreshEvents(fetchInfo.start.getTime() / 1000,
+            fetchInfo.end.getTime() / 1000, fetchInfo.timeZone, successCallback, failureCallback);
+
+    };
+
+    Calendar.prototype.refreshEvents = function (startTime, endTime, timeZone, onSuccessCallback = function () { }, onErrorCallback = function () { }) {
+        const self = this;
+        this.$loadContainer.loadIndicator();
+        const data = {
+            startTime: startTime,
+            endTime: endTime,
+            timeZone: timeZone
+        };
+
+        $.request(this.makeEventHandler('onRefreshEvents'), {
+            data: data,
+            success: function (data, textStatus, jqXHR) {
+                const events = data.events;
+                self.$loadContainer.loadIndicator('hide');
+                onSuccessCallback(events);
+            },
+            error: function (jqXHR, textStatus, error) {
+                self.$loadContainer.loadIndicator('hide');
+                this.error(jqXHR, textStatus, error);
+                onErrorCallback();
+            }
+        });
     }
 
     Calendar.prototype.onEventClick = function(info){

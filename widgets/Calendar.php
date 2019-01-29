@@ -21,6 +21,8 @@ use Captive\Calendar\Classes\EventData;
  */
 class Calendar extends WidgetBase
 {
+    const MONTH_START_END_CACHE_KEY = 'calendar-month-time-start-end';
+
     //
     // Configurable
     //
@@ -97,6 +99,8 @@ class Calendar extends WidgetBase
     public $searchTerm;
     public $searchMode;
     public $searchScope;
+
+    public $filterWidget;
 
     public $searchableColumns = null;
     public $visibleColumns = null;
@@ -384,8 +388,10 @@ class Calendar extends WidgetBase
 
     /**
      * Applies any filters to the model.
+     * @param integer $startTime unixTimestamp, the current calendar month startTime, eg: 1546149600
+     * @param integer $endTime unixTimestamp, the current calendar month endTime, eg: 1549778400
      */
-    public function prepareQuery()
+    public function prepareQuery($startTime = 0, $endTime = 0)
     {
         $query = $this->model->newQuery();
         $primaryTable = $this->model->getTable();
@@ -467,9 +473,9 @@ class Calendar extends WidgetBase
             $query->with(array_unique($withs));
         }
         /*
-         * Apply search term
+         * Apply search term and start_time end_time
          */
-        $query->where(function ($innerQuery) use ($primarySearchable, $relationSearchable, $joins) {
+        $query->where(function ($innerQuery) use ($primarySearchable, $relationSearchable, $joins, $startTime, $endTime) {
 
             /*
              * Search primary columns
@@ -496,6 +502,13 @@ class Calendar extends WidgetBase
                     }
                 }
             }
+
+            /**
+             * Current month date start_time end_time
+             */
+            if ($startTime >0) $innerQuery->whereRaw($this->recordEnd .' >= ?', [Carbon::createFromTimestamp($startTime)]);
+            if ($endTime > 0) $innerQuery->whereRaw($this->recordStart . ' <= ?', [Carbon::createFromTimestamp($endTime)]);
+
         });
 
         /*
@@ -580,9 +593,17 @@ class Calendar extends WidgetBase
         return $query;
     }
 
-    public function getRecords()
+
+    /**
+     *
+     *
+     * @param integer $startTime unixTimestamp, the current calendar month startTime, eg: 1546149600
+     * @param integer $endTime unixTimestamp, the current calendar month endTime, eg: 1549778400
+     * @return void
+     */
+    public function getRecords($startTime = 0 , $endTime = 0)
     {
-        $records = $this->prepareQuery()->get();
+        $records = $this->prepareQuery($startTime, $endTime)->get();
         $list = [];
 
         $timeZone = new DateTimeZone(Config::get('app.timezone','UTC'));
@@ -603,6 +624,29 @@ class Calendar extends WidgetBase
     {
         return Response::json([
             'events' => $this->getRecords(),
+        ]);
+    }
+
+    public function onRefreshEvents()
+    {
+        $startTime = post('startTime');
+        $endTime = post('endTime');
+        $timeZone = post('timeZone');
+
+        $data = [
+            'startTime' => $startTime,
+            'endTime' => $endTime,
+            'timeZone' => $timeZone
+        ];
+        $this->setMonthStartEndTime($data);
+
+        if ($this->isFilteredByDateRange()){
+            $startTime = 0;
+            $endTime = 0;
+        }
+
+        return Response::json([
+            'events' => $this->getRecords($startTime, $endTime),
         ]);
     }
 
@@ -633,6 +677,64 @@ class Calendar extends WidgetBase
         $this->searchScope = $scope;
     }
 
+    /**
+     *
+     * If filter has DateRange type and some values with that
+     * will ignore the current month startTime and endTime
+     *
+     * @return boolean
+     */
+    protected function isFilteredByDateRange()
+    {
+        if ($this->filterWidget === null) return false;
+
+        $filterScopes = $this->filterWidget->getScopes();
+
+        if (!empty($filterScopes)){
+            foreach ($filterScopes as $scope) {
+                if ($scope->type === 'daterange' && !empty($scope->value)) {
+                    return true;
+                }
+            }
+        }
+
+        /**
+         * Need to double check the session
+         *
+         * scopes is config array
+         */
+        $scopes = $this->filterWidget->scopes;
+
+        if (empty($scopes)) return false;
+
+        foreach($scopes as $scopeName => $scopeConfig)
+        {
+            if ($scopeConfig['type'] !== 'daterange') continue;
+            $cacheKey = 'scope-' . $scopeName;
+            $value = $this->filterWidget->getSession($cacheKey, null);
+            if (!empty($value)) return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Save the startTime, endTime, timeZone to the seesion
+     *
+     * @param array $data [startTime=>1546149600, endTime=>1549778400, timeZone=>America/Regina ]
+     * @return void
+     */
+    protected function setMonthStartEndTime($data)
+    {
+        $this->putSession(static::MONTH_START_END_CACHE_KEY, $data);
+    }
+
+    protected function getMonthStartEndTime($default = null)
+    {
+        return $this->getSession(static::MONTH_START_END_CACHE_KEY, $default);
+    }
+
+
      /**
      * Event handler for refreshing the calendar.
      * The search widget will call onRefresh
@@ -640,10 +742,20 @@ class Calendar extends WidgetBase
      */
     public function onRefresh()
     {
+        $startTime = 0;
+        $endTime = 0;
+        if (!$this->isFilteredByDateRange()){
+            $dateData = $this->getMonthStartEndTime();
+            if(!empty($dateData)){
+                $startTime = $dateData['startTime'];
+                $endTime = $dateData['endTime'];
+            }
+        }
+
         return [
             'id'     => 'calendar',
             'method' => 'onRefresh',
-            'events' => $this->getRecords()
+            'events' => $this->getRecords($startTime, $endTime)
         ];
     }
 
