@@ -8,7 +8,7 @@ class CalendarCache {
      * @param int firstDay the first day of week, 0 = sunday ...
      * @param int capcity the default month data stored
      */
-    constructor(firstDay = 0, capcity = 12) {
+    constructor(methodName, firstDay = 0, capcity = 12) {
         this.cache = [];
         this.lfuCache = [];
         this.cacheKey = '0';
@@ -18,6 +18,7 @@ class CalendarCache {
         this.capcity = capcity;
         this._hideIndicatorCallback = null;
         this._showIndicatorCallback = null;
+        this.methodName = methodName;
     }
 
     set hideIndicatorCallback(value) {
@@ -161,7 +162,7 @@ class CalendarCache {
         if (this.hideIndicatorCallback) this.hideIndicatorCallback();
     }
 
-    requestEvents(methodName, requestData, onSuccessCallback = () => {}, onErrorCallback = () => {}) {
+    requestEvents(requestData, onSuccessCallback = () => {}, onErrorCallback = () => {}) {
 
         let events = this.getCacheData(requestData);
         if (events !== null) {
@@ -176,7 +177,7 @@ class CalendarCache {
 
         const self = this;
 
-        $.request(methodName, {
+        $.request(this.methodName, {
             data: monthData,
             success: function (data, textStatus, jqXHR) {
                 const events = data.events;

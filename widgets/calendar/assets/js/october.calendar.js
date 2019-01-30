@@ -11,7 +11,7 @@
         this.$loadContainer = this.$el.find('.loading-indicator-container:first');
         this.firstDay = 0;
 
-        this.calendarCache = new CalendarCache(this.firstDay);
+        this.calendarCache = new CalendarCache(this.makeEventHandler('onRefreshEvents'), this.firstDay);
         const self = this;
         this.calendarCache.showIndicatorCallback = function(){
             self.$loadContainer.loadIndicator();
@@ -90,7 +90,7 @@
             editable: this.options.editable,
             eventLimit: true, // allow "more" link when too many events
 
-            firstDay: 0,
+            firstDay: this.firstDay,
             eventClick: function(info){
                 self.onEventClick(info);
             },
@@ -133,7 +133,7 @@
             timeZone: timeZone
         };
         this.clearEvents();
-        this.calendarCache.requestEvents(this.makeEventHandler('onRefreshEvents'), data, onSuccessCallback, onErrorCallback);
+        this.calendarCache.requestEvents(data, onSuccessCallback, onErrorCallback);
     }
 
     Calendar.prototype.onEventClick = function(info){
