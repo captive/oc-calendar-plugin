@@ -12,6 +12,7 @@ class CalendarCache {
         this.cache = [];
         this.lfuCache = [];
         this.lastCacheEvents = null;
+        this.lastMonthReqeustData = null;
         this.length = 0;
         this.firstDay = firstDay;
         this.capcity = capcity;
@@ -19,7 +20,7 @@ class CalendarCache {
         this._showIndicatorCallback = null;
     }
 
-    set hideIndicatorCallback (value) {
+    set hideIndicatorCallback(value) {
         this._hideIndicatorCallback = value;
     }
     get hideIndicatorCallback() {
@@ -55,11 +56,11 @@ class CalendarCache {
     removeOldCache() {
         if (this.count() < this.capcity) return;
         let minKey;
-        let min = Number.MAX_SAFE_INTEGER;
-        for (let key in this.lfuCache){
+        let minValue = Number.MAX_SAFE_INTEGER;
+        for (let key in this.lfuCache) {
             let element = this.lfuCache[key];
-            if (min <= element) {
-                min = element;
+            if (minValue <= element) {
+                minValue = element;
                 minKey = key;
             }
         }
@@ -101,6 +102,7 @@ class CalendarCache {
         const startDate = new Date(requestData.startTime * 1000);
 
         if (startDate.getDay() === this.firstDay && (requestData.endTime - requestData.startTime) === daysOfMonth * secondsOfDay) {
+            this.lastMonthReqeustData = requestData;
             return requestData;
         }
         let firstDayOfMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
@@ -122,8 +124,21 @@ class CalendarCache {
                 timeZone: requestData.timeZone,
             };
         }
+        this.lastMonthReqeustData = monthData;
         return monthData;
 
+    }
+
+    getMonthRequestDataString() {
+        if (this.lastMonthReqeustData === null) return '';
+        const requestString = 'calendar_start_time=' + this.lastMonthReqeustData.startTime +
+            '&calendar_end_time=' + this.lastMonthReqeustData.endTime +
+            '&calendar_time_zone=' + encodeURI(this.lastMonthReqeustData.timeZone);
+        return requestString;
+    }
+
+    getLastMonthRequestData() {
+        return this.lastMonthReqeustData;
     }
 
     saveCache(monthData, events) {
@@ -136,11 +151,11 @@ class CalendarCache {
         this.removeOldCache();
     }
 
-    showIndicator(){
+    showIndicator() {
         if (this.showIndicatorCallback) this.showIndicatorCallback();
     }
 
-    hideIndicator(){
+    hideIndicator() {
         if (this.hideIndicatorCallback) this.hideIndicatorCallback();
     }
 
@@ -148,8 +163,9 @@ class CalendarCache {
 
         let events = this.getCacheData(requestData);
         if (events !== null) {
-            if (events !== this.lastCacheEvents){
+            if (events !== this.lastCacheEvents) {
                 this.lastCacheEvents = events;
+                this.lastMonthReqeustData = requestData;
                 onSuccessCallback(events);
             }
             return;
@@ -178,7 +194,7 @@ class CalendarCache {
             }
         });
     }
-    dispose(){
+    dispose() {
         this._hideIndicatorCallback = null;
         this._showIndicatorCallback = null;
         this.cache = [];

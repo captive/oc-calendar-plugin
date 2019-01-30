@@ -43,6 +43,7 @@
 
         this.$el.on('dispose-control', this.proxy(this.dispose));
         $(document).on('ajaxComplete', this.proxy(this.onFilterUpdate));
+        $(document).on('oc.beforeRequest', this.proxy(this.beforeFilterRequestSend));
 
     };
 
@@ -51,6 +52,7 @@
         this.calendarCache.dispose();
         $(document).off('ajaxComplete', this.proxy(this.onFilterUpdate));
         this.$el.off('dispose-control', this.proxy(this.dispose));
+        $(document).off('oc.beforeRequest', this.proxy(this.beforeFilterRequestSend));
         this.$el.removeData('oc.calendar');
 
         this.$el = null
@@ -103,6 +105,20 @@
 
     };
 
+    Calendar.prototype.beforeFilterRequestSend = function(ev, context){
+
+
+        if (context.handler !== "calendarFilter::onFilterUpdate" &&
+            context.handler !== "calendarToolbarSearch::onSubmit") {
+                return;
+        }
+
+        const monthRequestData = this.calendarCache.getLastMonthRequestData();
+        if (monthRequestData === null) return;
+
+        context.options.data.calendar_time = monthRequestData;
+    }
+
     Calendar.prototype.onPrevNextButtonClick = function (fetchInfo, successCallback, failureCallback){
         this.refreshEvents(fetchInfo.start.getTime() / 1000,
             fetchInfo.end.getTime() / 1000, fetchInfo.timeZone, successCallback, failureCallback);
@@ -110,13 +126,13 @@
     };
 
     Calendar.prototype.refreshEvents = function (startTime, endTime, timeZone, onSuccessCallback = function () { }, onErrorCallback = function () { }) {
-        const self = this;
+
         const data = {
             startTime: startTime,
             endTime: endTime,
             timeZone: timeZone
         };
-
+        this.clearEvents();
         this.calendarCache.requestEvents(this.makeEventHandler('onRefreshEvents'), data, onSuccessCallback, onErrorCallback);
     }
 
@@ -160,7 +176,10 @@
         return this.options.alias + "::" + methodName;
     }
     Calendar.prototype.clearEvents = function(){
-        this.calendarControl.getEvents().forEach(event => {
+        if (this.calendarControl === null ) return;
+        const events = this.calendarControl.getEvents();
+        if (events === null) return;
+        events.forEach(event => {
             event.remove();
         });
     }

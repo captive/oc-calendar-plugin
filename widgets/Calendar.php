@@ -594,6 +594,24 @@ class Calendar extends WidgetBase
         return $query;
     }
 
+    /**
+     *
+     * Create a MD5 string based on current query SQL
+     * to set the cacheKey in calendar cache
+     * @see MemoryCache->hash()
+     *
+     * @param QueryBuilder $query
+     * @return string md5
+     */
+    protected function getCacheKey($query){
+        $bindings = array_map(function ($binding) {
+            return (string)$binding;
+        }, $query->getBindings());
+        $name = $query->getConnection()->getName();
+        $md5 = md5($name . $query->toSql() . serialize($bindings));
+        return $md5;
+
+    }
 
     /**
      *
@@ -605,7 +623,8 @@ class Calendar extends WidgetBase
     public function getRecords($startTime = 0 , $endTime = 0)
     {
         $query = $this->prepareQuery($startTime, $endTime);
-        // $cacheKey = $this->getCacheKey($query->getQuery()->getQuery());
+        $cacheKey = $this->getCacheKey($query);
+
         $records = $query->get();
         $list = [];
 
@@ -630,6 +649,12 @@ class Calendar extends WidgetBase
         ]);
     }
 
+    /**
+     * It has been called from the first refresh page
+     * and next or previous button click event
+     *
+     * @return json
+     */
     public function onRefreshEvents()
     {
         $startTime = post('startTime');
@@ -641,7 +666,7 @@ class Calendar extends WidgetBase
             'endTime' => $endTime,
             'timeZone' => $timeZone
         ];
-        $this->setMonthStartEndTime($data);
+
 
         if ($this->isFilteredByDateRange()){
             $startTime = 0;
@@ -721,20 +746,16 @@ class Calendar extends WidgetBase
         return false;
     }
 
-    /**
-     * Save the startTime, endTime, timeZone to the seesion
-     *
-     * @param array $data [startTime=>1546149600, endTime=>1549778400, timeZone=>America/Regina ]
-     * @return void
-     */
-    protected function setMonthStartEndTime($data)
-    {
-        $this->putSession(static::MONTH_START_END_CACHE_KEY, $data);
-    }
 
-    protected function getMonthStartEndTime($default = null)
+    /**
+     * Get the startTime and endTime from the october.calendar.js Calendar.prototype.beforeFilterRequestSend
+     *
+     * @return array $data [startTime=>1546149600, endTime=>1549778400, timeZone=>America/Regina ]
+     */
+    protected function getMonthStartEndTime()
     {
-        return $this->getSession(static::MONTH_START_END_CACHE_KEY, $default);
+        $calendar_time = post('calendar_time');
+        return $calendar_time;
     }
 
 
