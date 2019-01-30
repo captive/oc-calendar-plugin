@@ -120,6 +120,7 @@ class Calendar extends WidgetBase
             'recordStart',
             'recordEnd',
             'previewMode',
+            'searchList',
             'availableDisplayModes',
         ]);
 
@@ -203,7 +204,7 @@ class Calendar extends WidgetBase
                 $selectedModes[] = $fullCalendarModes[$mode];
             }
         }
-       return implode(',', $selectedModes);
+        return implode(',', $selectedModes);
     }
 
     /**
@@ -618,7 +619,7 @@ class Calendar extends WidgetBase
      *
      * @param integer $startTime unixTimestamp, the current calendar month startTime, eg: 1546149600
      * @param integer $endTime unixTimestamp, the current calendar month endTime, eg: 1549778400
-     * @return void
+     * @return array ['events'=> [ {url, title, start, end}], 'cacheKey'=> 'MD5 String']
      */
     public function getRecords($startTime = 0 , $endTime = 0)
     {
@@ -638,15 +639,16 @@ class Calendar extends WidgetBase
             ], $timeZone);
             $list[] = $eventData->toArray();
         }
-        return $list;
+        return [
+            'events' => $list,
+            'cacheKey' => $cacheKey
+        ];
     }
 
 
     public function onFetchEvents()
     {
-        return Response::json([
-            'events' => $this->getRecords(),
-        ]);
+        return Response::json($this->getRecords());
     }
 
     /**
@@ -673,9 +675,7 @@ class Calendar extends WidgetBase
             $endTime = 0;
         }
 
-        return Response::json([
-            'events' => $this->getRecords($startTime, $endTime),
-        ]);
+        return Response::json($this->getRecords($startTime, $endTime));
     }
 
     // search
@@ -776,11 +776,11 @@ class Calendar extends WidgetBase
             }
         }
 
-        return [
-            'id'     => 'calendar',
-            'method' => 'onRefresh',
-            'events' => $this->getRecords($startTime, $endTime)
-        ];
+        $records = $this->getRecords($startTime, $endTime);
+        $records['id'] = 'calendar';
+        $records['method'] = 'onRefresh';
+
+        return $records;
     }
 
     /**
