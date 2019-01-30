@@ -100,7 +100,6 @@
 
         });
         this.calendarControl.render();
-        // this.fetchEvents();
         this.calendarControl.on('dateClick', this.proxy(this.onDateClick));
 
     };
@@ -202,24 +201,6 @@
         }
     }
 
-    Calendar.prototype.fetchEvents = function (onSuccessCallback = function () {}, onErrorCallback = function () {}){
-        const self = this;
-        this.$loadContainer.loadIndicator();
-        $.request(this.makeEventHandler('onFetchEvents'), {
-            data: '',
-            success: function (data, textStatus, jqXHR) {
-                const events = data['events'];
-                self.addEvents(events);
-                self.$loadContainer.loadIndicator('hide');
-                onSuccessCallback();
-            },
-            error: function (jqXHR, textStatus, error) {
-                self.$loadContainer.loadIndicator('hide');
-                this.error(jqXHR, textStatus, error);
-                onErrorCallback();
-            }
-        });
-    }
 
 
     // CALENDAR CONTROL PLUGIN DEFINITION

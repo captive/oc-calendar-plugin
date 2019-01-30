@@ -150,8 +150,6 @@ class CalendarCache {
     }
 
     setCacheKey(cacheKey = '0') {
-        if (cacheKey === this.cacheKey) return;
-        this.clearCache();
         this.cacheKey = cacheKey;
     }
 
