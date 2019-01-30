@@ -165,6 +165,7 @@ class Calendar extends WidgetBase
         $this->addJs('js/fullcalendar.js', '4.0.0-alpha.4');
         // @see https://fullcalendar.io/docs/v4/timeZone
         $this->addJs('js/plugins/moment-timezone.min.js', '4.0.0-alpha.4');
+        $this->addJs('js/october.calendar.cache.js', 'captive.calendar');
         $this->addJs('js/october.calendar.js', 'captive.calendar');
     }
 
@@ -507,7 +508,7 @@ class Calendar extends WidgetBase
              * Current month date start_time end_time
              */
             if ($startTime >0) $innerQuery->whereRaw($this->recordEnd .' >= ?', [Carbon::createFromTimestamp($startTime)]);
-            if ($endTime > 0) $innerQuery->whereRaw($this->recordStart . ' <= ?', [Carbon::createFromTimestamp($endTime)]);
+            if ($endTime > 0) $innerQuery->whereRaw($this->recordStart . ' < ?', [Carbon::createFromTimestamp($endTime)]);
 
         });
 
@@ -603,7 +604,9 @@ class Calendar extends WidgetBase
      */
     public function getRecords($startTime = 0 , $endTime = 0)
     {
-        $records = $this->prepareQuery($startTime, $endTime)->get();
+        $query = $this->prepareQuery($startTime, $endTime);
+        // $cacheKey = $this->getCacheKey($query->getQuery()->getQuery());
+        $records = $query->get();
         $list = [];
 
         $timeZone = new DateTimeZone(Config::get('app.timezone','UTC'));

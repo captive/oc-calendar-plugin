@@ -9,6 +9,16 @@
         this.$el = $(element);
         this.calendarControl =  null;
         this.$loadContainer = this.$el.find('.loading-indicator-container:first');
+        this.firstDay = 0;
+
+        this.calendarCache = new CalendarCache(this.firstDay);
+        const self = this;
+        this.calendarCache.showIndicatorCallback = function(){
+            self.$loadContainer.loadIndicator();
+        };
+        this.calendarCache.hideIndicatorCallback = function(){
+            self.$loadContainer.loadIndicator('hide');
+        }
 
         $.oc.foundation.controlUtils.markDisposable(element)
         Base.call(this)
@@ -38,6 +48,7 @@
 
     Calendar.prototype.dispose = function () {
 
+        this.calendarCache.dispose();
         $(document).off('ajaxComplete', this.proxy(this.onFilterUpdate));
         this.$el.off('dispose-control', this.proxy(this.dispose));
         this.$el.removeData('oc.calendar');
@@ -100,26 +111,13 @@
 
     Calendar.prototype.refreshEvents = function (startTime, endTime, timeZone, onSuccessCallback = function () { }, onErrorCallback = function () { }) {
         const self = this;
-        this.$loadContainer.loadIndicator();
         const data = {
             startTime: startTime,
             endTime: endTime,
             timeZone: timeZone
         };
 
-        $.request(this.makeEventHandler('onRefreshEvents'), {
-            data: data,
-            success: function (data, textStatus, jqXHR) {
-                const events = data.events;
-                self.$loadContainer.loadIndicator('hide');
-                onSuccessCallback(events);
-            },
-            error: function (jqXHR, textStatus, error) {
-                self.$loadContainer.loadIndicator('hide');
-                this.error(jqXHR, textStatus, error);
-                onErrorCallback();
-            }
-        });
+        this.calendarCache.requestEvents(this.makeEventHandler('onRefreshEvents'), data, onSuccessCallback, onErrorCallback);
     }
 
     Calendar.prototype.onEventClick = function(info){
