@@ -47,6 +47,7 @@ class CalendarCache {
         this.cacheKey = '0';
         this.lfuCache = [];
         this.cache = [];
+        this.lastMonthReqeustData = null;
     }
 
     incrLFUCount(key) {
@@ -141,14 +142,16 @@ class CalendarCache {
         const startTime = monthData.startTime;
         const endTime = monthData.endTime;
         const key = data.cacheKey + '-' + startTime + '-' + endTime;
-        this.cache[key] = events;
         this.setCacheKey(data.cacheKey);
+        this.cache[key] = events;
         this.length++;
         this.incrLFUCount(key);
         this.removeOldCache();
     }
 
     setCacheKey(cacheKey = '0') {
+        if (cacheKey === this.cacheKey) return;
+        this.clearCache();
         this.cacheKey = cacheKey;
     }
 

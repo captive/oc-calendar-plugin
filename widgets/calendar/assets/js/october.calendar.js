@@ -110,13 +110,14 @@
 
         if (context.handler !== "calendarFilter::onFilterUpdate" &&
             context.handler !== "calendarToolbarSearch::onSubmit") {
-                return;
+                return true;
         }
 
         const monthRequestData = this.calendarCache.getLastMonthRequestData();
         if (monthRequestData === null) return;
 
         context.options.data.calendar_time = monthRequestData;
+
     }
 
     Calendar.prototype.onPrevNextButtonClick = function (fetchInfo, successCallback, failureCallback){
