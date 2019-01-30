@@ -11,7 +11,7 @@ class CalendarCache {
     constructor(firstDay = 0, capcity = 12) {
         this.cache = [];
         this.lfuCache = [];
-        this.lastCacheEvents = null;
+        this.cacheKey = '0';
         this.lastMonthReqeustData = null;
         this.length = 0;
         this.firstDay = firstDay;
@@ -44,6 +44,7 @@ class CalendarCache {
 
     clearCache() {
         this.length = 0;
+        this.cacheKey = '0';
         this.lfuCache = [];
         this.cache = [];
     }
@@ -83,7 +84,8 @@ class CalendarCache {
         for (let key in this.cache) {
             let element = this.cache[key];
             const timeKeys = key.split('-');
-            if (startTime >= parseInt(timeKeys[0]) && endTime <= parseInt(timeKeys[1])) {
+            if (this.cacheKey === timeKeys[0] &&
+                startTime >= parseInt(timeKeys[1]) && endTime <= parseInt(timeKeys[2])) {
                 self.incrLFUCount(key);
                 results = element;
                 break;
@@ -129,26 +131,25 @@ class CalendarCache {
 
     }
 
-    getMonthRequestDataString() {
-        if (this.lastMonthReqeustData === null) return '';
-        const requestString = 'calendar_start_time=' + this.lastMonthReqeustData.startTime +
-            '&calendar_end_time=' + this.lastMonthReqeustData.endTime +
-            '&calendar_time_zone=' + encodeURI(this.lastMonthReqeustData.timeZone);
-        return requestString;
-    }
 
     getLastMonthRequestData() {
         return this.lastMonthReqeustData;
     }
 
-    saveCache(monthData, events) {
+    saveCache(monthData, data) {
+        const events = data.events;
         const startTime = monthData.startTime;
         const endTime = monthData.endTime;
-        const key = startTime + '-' + endTime;
+        const key = data.cacheKey + '-' + startTime + '-' + endTime;
         this.cache[key] = events;
+        this.setCacheKey(data.cacheKey);
         this.length++;
         this.incrLFUCount(key);
         this.removeOldCache();
+    }
+
+    setCacheKey(cacheKey = '0') {
+        this.cacheKey = cacheKey;
     }
 
     showIndicator() {
@@ -163,18 +164,15 @@ class CalendarCache {
 
         let events = this.getCacheData(requestData);
         if (events !== null) {
-            if (events !== this.lastCacheEvents) {
-                this.lastCacheEvents = events;
-                this.lastMonthReqeustData = requestData;
-                onSuccessCallback(events);
-            }
+            this.lastMonthReqeustData = requestData;
+            onSuccessCallback(events);
             return;
         }
 
         this.showIndicator();
 
         const monthData = this.getMonthRequestData(requestData);
-        // TODO month Data need to send to the server to refresh the session start_time and end_time
+
         const self = this;
 
         $.request(methodName, {
@@ -183,8 +181,7 @@ class CalendarCache {
                 const events = data.events;
                 self.hideIndicator();
                 // the events is whole month data
-                self.saveCache(monthData, events);
-                self.lastCacheEvents = events;
+                self.saveCache(monthData, data);
                 onSuccessCallback(events);
             },
             error: function (jqXHR, textStatus, error) {
@@ -199,6 +196,5 @@ class CalendarCache {
         this._showIndicatorCallback = null;
         this.cache = [];
         this.lfuCache = [];
-        this.lastCacheEvents = null;
     }
 }

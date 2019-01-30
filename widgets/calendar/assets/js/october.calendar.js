@@ -191,6 +191,11 @@
                 && data.hasOwnProperty('method')) {
             if (data.id === 'calendar' && data.method === 'onRefresh') {
                 this.clearEvents();
+                const requestData  = {
+                    startTime: data.startTime,
+                    endTime: data.endTime
+                }
+                this.calendarCache.saveCache(requestData, data);
                 this.addEvents(data.events);
             }
         }

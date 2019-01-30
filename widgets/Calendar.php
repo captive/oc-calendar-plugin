@@ -505,12 +505,6 @@ class Calendar extends WidgetBase
                 }
             }
 
-            /**
-             * Current month date start_time end_time
-             */
-            if ($startTime >0) $innerQuery->whereRaw($this->recordEnd .' >= ?', [Carbon::createFromTimestamp($startTime)]);
-            if ($endTime > 0) $innerQuery->whereRaw($this->recordStart . ' < ?', [Carbon::createFromTimestamp($endTime)]);
-
         });
 
         /*
@@ -599,15 +593,18 @@ class Calendar extends WidgetBase
      *
      * Create a MD5 string based on current query SQL
      * to set the cacheKey in calendar cache
+     *
      * @see MemoryCache->hash()
      *
      * @param QueryBuilder $query
      * @return string md5
      */
     protected function getCacheKey($query){
+
         $bindings = array_map(function ($binding) {
             return (string)$binding;
         }, $query->getBindings());
+
         $name = $query->getConnection()->getName();
         $md5 = md5($name . $query->toSql() . serialize($bindings));
         return $md5;
@@ -626,6 +623,16 @@ class Calendar extends WidgetBase
         $query = $this->prepareQuery($startTime, $endTime);
         $cacheKey = $this->getCacheKey($query);
 
+        /**
+         * The $startTime and $endTime are from calendar month, should be ignore
+         */
+        if ($startTime > 0 ||  $endTime > 0){
+            $query->where(function ($innerQuery) use ($startTime, $endTime) {
+                if ($startTime > 0) $innerQuery->whereRaw($this->recordEnd .' >= ?', [Carbon::createFromTimestamp($startTime)]);
+                if ($endTime > 0) $innerQuery->whereRaw($this->recordStart . ' < ?', [Carbon::createFromTimestamp($endTime)]);
+            });
+        }
+
         $records = $query->get();
         $list = [];
 
@@ -641,7 +648,9 @@ class Calendar extends WidgetBase
         }
         return [
             'events' => $list,
-            'cacheKey' => $cacheKey
+            'cacheKey' => $cacheKey,
+            'startTime' => $startTime,
+            'endTime' => $endTime,
         ];
     }
 
