@@ -129,7 +129,6 @@ class CalendarCache {
             };
         }
         return monthData;
-
     }
 
     /**
@@ -179,10 +178,10 @@ class CalendarCache {
     eagerRequest(requestData) {
 
         let monthData = [];
-        if (requestData.startTime > this.lastRequestStartTime){
+        if (requestData.startTime > this.lastRequestStartTime) {
             // go to request next month
             monthData.startTime = requestData.endTime;
-        }else{
+        } else {
             // go to request previous month
             monthData.startTime = requestData.startTime;
         }
@@ -206,7 +205,105 @@ class CalendarCache {
         });
     }
 
+    saveFirstThreeMonthsData(data, monthDataList, onSuccessCallback) {
+
+        const allEvents = data.events;
+        let prevoiousMonthData = monthDataList[0];
+        let currentMonthData = monthDataList[1];
+        let nextMonthData = monthDataList[2];
+
+        let previousEvents = [];
+        let currentEvents = [];
+        let nextEvents = [];
+
+        for (let index in allEvents) {
+            const event = allEvents[index];
+            const eventStartTime = Date.parse(event.start) / 1000;
+            const eventEndTime = Date.parse(event.end) / 1000;
+            if (eventEndTime >= prevoiousMonthData.startTime &&
+                eventStartTime < prevoiousMonthData.endTime) {
+                previousEvents.push(event);
+            }
+            if (eventEndTime >= currentMonthData.startTime &&
+                eventStartTime < currentMonthData.endTime) {
+                currentEvents.push(event);
+            }
+            if (eventEndTime >= nextMonthData.startTime &&
+                eventStartTime < nextMonthData.endTime) {
+                nextEvents.push(event);
+            }
+        }
+
+        const previousData = {
+            cacheKey: data.cacheKey,
+            events: previousEvents,
+        };
+        this.saveCache(prevoiousMonthData, previousData);
+
+        const currentData = {
+            cacheKey: data.cacheKey,
+            events: currentEvents
+        };
+        this.saveCache(currentMonthData, currentData);
+
+        onSuccessCallback(currentData.events);
+
+        this.setLastRequestTime(currentMonthData.startTime);
+        this.hideIndicator();
+
+        const nextData = {
+            cacheKey: data.cacheKey,
+            events: nextEvents
+        };
+        this.saveCache(nextMonthData, nextData);
+    }
+
+    loadFirstThreeMonthsData(requestData, onSuccessCallback = () => {}, onErrorCallback = () => {}) {
+        this.showIndicator();
+
+        const currentMonthData = this.getMonthRequestData(requestData);
+        this.lastMonthReqeustData = currentMonthData;
+        // previous month
+        let previousMonthData = [];
+        previousMonthData.startTime = currentMonthData.startTime;
+        previousMonthData.endTime = previousMonthData.startTime + secondsOfDay;
+        previousMonthData.timeZone = currentMonthData.timeZone;
+        previousMonthData = this.getMonthRequestData(previousMonthData);
+
+        // next month
+        let nextMonthData = [];
+        nextMonthData.startTime = currentMonthData.endTime;
+        nextMonthData.endTime = nextMonthData.startTime + secondsOfDay;
+        nextMonthData.timeZone = currentMonthData.timeZone;
+        nextMonthData = this.getMonthRequestData(nextMonthData);
+
+        const monthData = {
+            startTime: previousMonthData.startTime,
+            endTime: nextMonthData.endTime,
+            timeZone: currentMonthData.timeZone,
+        };
+
+        const self = this;
+        $.request(this.methodName, {
+            data: monthData,
+            success: function (data, textStatus, jqXHR) {
+                self.saveFirstThreeMonthsData(data, [previousMonthData, currentMonthData, nextMonthData], onSuccessCallback);
+            },
+            error: function (jqXHR, textStatus, error) {
+                self.hideIndicator();
+                self.error(jqXHR, textStatus, error);
+                onErrorCallback();
+            }
+        });
+
+    }
+
     requestEvents(requestData, onSuccessCallback = () => {}, onErrorCallback = () => {}) {
+
+        if (this.isEmpty()) {
+            this.loadFirstThreeMonthsData(requestData, onSuccessCallback, onErrorCallback);
+            return;
+        }
 
         let events = this.getCacheData(requestData);
         if (events !== null) {
