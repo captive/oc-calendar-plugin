@@ -9,11 +9,8 @@ class CalendarCache {
      * @param int capcity the default month data stored
      */
     constructor(methodName, firstDay = 0, capcity = 12) {
-        this.cache = [];
-        this.lfuCache = [];
-        this.cacheKey = '0';
-        this.lastMonthReqeustData = null;
-        this.length = 0;
+        this.clearCache();
+
         this.firstDay = firstDay;
         this.capcity = capcity;
         this._hideIndicatorCallback = null;
@@ -44,11 +41,15 @@ class CalendarCache {
     }
 
     clearCache() {
-        this.length = 0;
-        this.cacheKey = '0';
-        this.lfuCache = [];
         this.cache = [];
+        this.lfuCache = [];
+        /**
+         * cacheKey is MD5 string created by server, based on the query SQL not including monthData.startTime and endTime
+         */
+        this.cacheKey = '0';
         this.lastMonthReqeustData = null;
+        this.length = 0;
+        this.lastRequestStartTime = 0;
     }
 
     incrLFUCount(key) {
@@ -97,8 +98,8 @@ class CalendarCache {
     }
 
     /**
-     * Some weeks may be in two month, such as 2018-12-30 to 2019-01-05
      *
+     * return 6 weeks such as 2018 - 12 - 30 to 2019 - 01 - 05
      *
      * @param Array requestData
      */
@@ -106,7 +107,6 @@ class CalendarCache {
         const startDate = new Date(requestData.startTime * 1000);
 
         if (startDate.getDay() === this.firstDay && (requestData.endTime - requestData.startTime) === daysOfMonth * secondsOfDay) {
-            this.lastMonthReqeustData = requestData;
             return requestData;
         }
         let firstDayOfMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
@@ -128,11 +128,19 @@ class CalendarCache {
                 timeZone: requestData.timeZone,
             };
         }
-        this.lastMonthReqeustData = monthData;
         return monthData;
 
     }
 
+    /**
+     *
+     * the lastRequestStartTime is been used for loading the next or previous month
+     *
+     * @param integer startTime  unix Timestamp
+     */
+    setLastRequestTime(startTime) {
+        this.lastRequestStartTime = startTime;
+    }
 
     getLastMonthRequestData() {
         return this.lastMonthReqeustData;
@@ -162,11 +170,48 @@ class CalendarCache {
         if (this.hideIndicatorCallback) this.hideIndicatorCallback();
     }
 
+    /**
+     * Click the next button will load one more next month data
+     * Click the previous button will load one more previous month data
+     *
+     * @param array requestData {startTime: unixTimestamp, endTime:, timeZone: string}
+     */
+    eagerRequest(requestData) {
+
+        let monthData = [];
+        if (requestData.startTime > this.lastRequestStartTime){
+            // go to request next month
+            monthData.startTime = requestData.endTime;
+        }else{
+            // go to request previous month
+            monthData.startTime = requestData.startTime;
+        }
+        monthData.endTime = monthData.startTime + secondsOfDay;
+        monthData.timeZone = requestData.timeZone;
+        monthData = this.getMonthRequestData(monthData);
+
+        this.lastRequestStartTime = requestData.startTime;
+
+        let events = this.getCacheData(monthData);
+        if (events !== null) return;
+        const self = this;
+        $.request(this.methodName, {
+            data: monthData,
+            success: function (data, textStatus, jqXHR) {
+                self.saveCache(monthData, data);
+            },
+            error: function (jqXHR, textStatus, error) {
+                self.error(jqXHR, textStatus, error);
+            }
+        });
+    }
+
     requestEvents(requestData, onSuccessCallback = () => {}, onErrorCallback = () => {}) {
 
         let events = this.getCacheData(requestData);
         if (events !== null) {
             this.lastMonthReqeustData = requestData;
+            this.eagerRequest(requestData);
             onSuccessCallback(events);
             return;
         }
@@ -174,6 +219,7 @@ class CalendarCache {
         this.showIndicator();
 
         const monthData = this.getMonthRequestData(requestData);
+        this.lastMonthReqeustData = monthData;
 
         const self = this;
 
@@ -185,6 +231,7 @@ class CalendarCache {
                 // the events is whole month data
                 self.saveCache(monthData, data);
                 onSuccessCallback(events);
+                self.eagerRequest(monthData);
             },
             error: function (jqXHR, textStatus, error) {
                 self.hideIndicator();

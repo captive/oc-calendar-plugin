@@ -76,12 +76,6 @@
             },
             timeZone: timezone,
             timeZoneImpl: 'moment-timezone',
-            titleFormat: {
-                month: 'short',
-                year: 'numeric',
-                day: 'numeric',
-                weekday: 'long'
-            },
             navLinks: true, // can click day/week names to navigate views
 
             weekNumbers: true,
@@ -196,6 +190,9 @@
                     endTime: data.endTime
                 }
                 this.calendarCache.saveCache(requestData, data);
+                //clear the prevous requestTime
+                this.calendarCache.setLastRequestTime(0);
+                this.calendarCache.eagerRequest(requestData);
                 this.addEvents(data.events);
             }
         }
