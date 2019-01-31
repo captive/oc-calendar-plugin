@@ -177,6 +177,7 @@ class CalendarCache {
      */
     eagerRequest(requestData) {
 
+        requestData = this.getMonthRequestData(requestData);
         let monthData = [];
         if (requestData.startTime > this.lastRequestStartTime) {
             // go to request next month
@@ -194,6 +195,7 @@ class CalendarCache {
         let events = this.getCacheData(monthData);
         if (events !== null) return;
         const self = this;
+
         $.request(this.methodName, {
             data: monthData,
             success: function (data, textStatus, jqXHR) {
