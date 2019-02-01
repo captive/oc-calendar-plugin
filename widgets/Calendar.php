@@ -634,6 +634,31 @@ class Calendar extends WidgetBase
         }
 
         $records = $query->get();
+
+        /**
+         * @event 'captive.calendar.extendRecords
+         * Provides an opportunity to modify and / or return the `$records` Collection object before the widget uses it.
+         *
+         * Example usage:
+         *
+         *     Event::listen(''captive.calendar.extendRecords', function($listWidget, $records) {
+         *         $model = MyModel::where('always_include', true)->first();
+         *         $records->prepend($model);
+         *     });
+         *
+         * Or
+         *
+         *     $listWidget->bindEvent('calendar.extendRecords', function ($records) {
+         *         $model = MyModel::where('always_include', true)->first();
+         *         $records->prepend($model);
+         *     });
+         *
+         */
+        if ($event = $this->fireSystemEvent('captive.calendar.extendRecords', [&$records, $startTime, $endTime])) {
+            $records = $event;
+        }
+
+
         $list = [];
 
         $timeZone = new DateTimeZone(Config::get('app.timezone','UTC'));
