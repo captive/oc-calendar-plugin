@@ -16,6 +16,18 @@ recordUrl: author/plugins/events/update/:event_id
 # @see custom.calendar.js sample
 # recordOnClick: $.oc.eventController.onEventClick(:event_id)
 
+
+# Triggered when the user clicks on a date or a time
+# data is a plain object with the following properties
+# date: is the a JS Date Object for the clicked day/time.
+# dateStr: An ISO8601 string representation of the date
+# allDay: true or false
+# dayEl: An HTML element that represents the whole-day that was clicked on.
+# event: The native JavaScript event with low-level information such as click coordinates.
+# view: The current view @see https://fullcalendar.io/docs/v4/view-object
+onClickDate: $.oc.availabilitySlotController.onClickDate(:data, :date, :dateStr, :allDay,  :dayEl, :event, :view)
+
+
 # The property to use as the title displayed on the calendar
 recordTitle: name
 
