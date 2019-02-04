@@ -32,6 +32,7 @@
         alias: null,
         displayModes: 'month',
         editable: false,
+        clickDate: null,
     }
 
     Calendar.prototype.init = function () {
@@ -150,8 +151,16 @@
         }
     }
 
-    Calendar.prototype.onDateClick = function (ev) {
-        // alert('AAA');
+    Calendar.prototype.onDateClick = function (info) {
+        if (this.options.clickDate == null) return;
+        const elements = this.options.clickDate.split('.');
+        let funcName =  elements.pop(); // remove the last element
+        const objectName = elements.join('.');
+
+        const index = funcName.indexOf('(');
+        funcName = funcName.substring(0, index);
+        const object = eval(objectName);
+        object[funcName](info, info.date, info.dateStr, info.allDay, info.dayEl, info.jsEvent, info.view);
     }
 
     Calendar.prototype.addEvent = function (eventObj = null) {

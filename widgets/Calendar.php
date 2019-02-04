@@ -47,6 +47,15 @@ class Calendar extends WidgetBase
      */
     public $recordOnClick;
 
+
+    /**
+     *
+     * Triggered when the user clicks on a date or a time
+     *
+     * @var string
+     */
+    public $onClickDate;
+
     /**
      * @var string The model property to use as the title displayed on the calendar
      */
@@ -119,6 +128,7 @@ class Calendar extends WidgetBase
             'recordTitle',
             'recordStart',
             'recordEnd',
+            'onClickDate',
             'previewMode',
             'searchList',
             'availableDisplayModes',
@@ -636,22 +646,15 @@ class Calendar extends WidgetBase
         $records = $query->get();
 
         /**
-         * @event 'captive.calendar.extendRecords
+         * @event 'captive.calendar.extendRecords'
          * Provides an opportunity to modify and / or return the `$records` Collection object before the widget uses it.
          *
          * Example usage:
          *
-         *     Event::listen(''captive.calendar.extendRecords', function($listWidget, $records) {
-         *         $model = MyModel::where('always_include', true)->first();
-         *         $records->prepend($model);
+         *     Event::listen('captive.calendar.extendRecords', function($calendarWidget, &$records , $startTime, $endTime) {
+         *         $records=$data;
          *     });
          *
-         * Or
-         *
-         *     $listWidget->bindEvent('calendar.extendRecords', function ($records) {
-         *         $model = MyModel::where('always_include', true)->first();
-         *         $records->prepend($model);
-         *     });
          *
          */
         if ($event = $this->fireSystemEvent('captive.calendar.extendRecords', [&$records, $startTime, $endTime])) {
