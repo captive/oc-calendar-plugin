@@ -12,6 +12,7 @@ searchList: $/author/plugin/models/event/columns.yaml
 # Record URL
 recordUrl: author/plugins/events/update/:event_id
 
+
 # Record on click
 # @see custom.calendar.js sample
 # recordOnClick: $.oc.eventController.onEventClick(:event_id)
@@ -36,6 +37,9 @@ recordStart: start_time
 
 # The property to use as the end time for the record
 recordEnd: end_time
+
+# The property to use as the background color displayed on the event
+recordBackgroundColor: event_color
 
 # Available display modes to be supported in this instance
 availableDisplayModes: [month, week, day, list]
