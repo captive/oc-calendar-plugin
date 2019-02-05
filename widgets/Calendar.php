@@ -1,6 +1,7 @@
 <?php namespace Captive\Calendar\Widgets;
 
 use Db;
+use Log;
 use Lang;
 use Config;
 use Backend;
@@ -71,6 +72,8 @@ class Calendar extends WidgetBase
      */
     public $recordEnd = 'end_at';
 
+    public $recordBackgroundColor = null;
+
     /**
      * @var array Display modes to allow ['month', 'week', 'day', 'list']
      */
@@ -132,6 +135,7 @@ class Calendar extends WidgetBase
             'previewMode',
             'searchList',
             'availableDisplayModes',
+            'recordBackgroundColor',
         ]);
 
         // Initialize the search columns
@@ -670,7 +674,8 @@ class Calendar extends WidgetBase
                 'url'   => $this->getRecordUrl($record),
                 'title' => $record->{$this->recordTitle},
                 'start' => $record->{$this->recordStart},
-                'end'   => $record->{$this->recordEnd}
+                'end'   => $record->{$this->recordEnd},
+                'color' => empty($this->recordBackgroundColor) ? '' : $record->{$this->recordBackgroundColor},
             ], $timeZone);
             $list[] = $eventData->toArray();
         }
