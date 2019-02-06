@@ -138,7 +138,13 @@
             if (url.startsWith('http')){
                 location.href = url;
             }else{
-                eval(url);
+                const elements = url.split('.');
+                let funcName = elements.pop(); // remove the last element
+                const objectName = elements.join('.');
+                const index = funcName.indexOf('(');
+                funcName = funcName.substring(0, index);
+                const object = eval(objectName);
+                object[funcName](info, info.event.start, info.event.end, info.event, info.el);
             }
         }
     }

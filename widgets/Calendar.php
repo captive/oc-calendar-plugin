@@ -74,6 +74,8 @@ class Calendar extends WidgetBase
 
     public $recordBackgroundColor = null;
 
+    public $recordId = null;
+
     /**
      * @var array Display modes to allow ['month', 'week', 'day', 'list']
      */
@@ -666,21 +668,39 @@ class Calendar extends WidgetBase
         }
 
 
-        $list = [];
+        $events = [];
 
         $timeZone = new DateTimeZone(Config::get('app.timezone','UTC'));
         foreach ($records as $record) {
             $eventData = new EventData([
+                'id'    => empty($this->recordId) ? '' : $record->{$this->recordId},
                 'url'   => $this->getRecordUrl($record),
                 'title' => $record->{$this->recordTitle},
                 'start' => $record->{$this->recordStart},
                 'end'   => $record->{$this->recordEnd},
                 'color' => empty($this->recordBackgroundColor) ? '' : $record->{$this->recordBackgroundColor},
             ], $timeZone);
-            $list[] = $eventData->toArray();
+            $events[] = $eventData->toArray();
         }
+
+        /**
+         * @event 'captive.calendar.extendEvents'
+         * Provides an opportunity to modify and / or return the `$event` Collection object before the widget uses it.
+         *
+         * Example usage:
+         *
+         *     Event::listen('captive.calendar.extendEvents', function($calendarWidget, &$events) {
+         *         $records=$data;
+         *     });
+         *
+         *
+         */
+        if ($event = $this->fireSystemEvent('captive.calendar.extendEvents', [&$events])) {
+            $events = $event;
+        }
+
         return [
-            'events' => $list,
+            'events' => $events,
             'cacheKey' => $cacheKey,
             'startTime' => $startTime,
             'endTime' => $endTime,
