@@ -16,9 +16,11 @@
         this.calendarCache.showIndicatorCallback = function(){
             self.$loadContainer.loadIndicator();
         };
+
         this.calendarCache.hideIndicatorCallback = function(){
             self.$loadContainer.loadIndicator('hide');
-        }
+        };
+
 
         $.oc.foundation.controlUtils.markDisposable(element)
         Base.call(this)

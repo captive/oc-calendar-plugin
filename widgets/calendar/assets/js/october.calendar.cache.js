@@ -32,6 +32,7 @@ class CalendarCache {
         return this._showIndicatorCallback;
     }
 
+
     isEmpty() {
         return this.length === 0;
     }
@@ -169,6 +170,7 @@ class CalendarCache {
         if (this.hideIndicatorCallback) this.hideIndicatorCallback();
     }
 
+
     /**
      * Click the next button will load one more next month data
      * Click the previous button will load one more previous month data
@@ -202,7 +204,7 @@ class CalendarCache {
                 self.saveCache(monthData, data);
             },
             error: function (jqXHR, textStatus, error) {
-                self.error(jqXHR, textStatus, error);
+                this.error(jqXHR, textStatus, error);
             }
         });
     }
@@ -293,7 +295,7 @@ class CalendarCache {
             },
             error: function (jqXHR, textStatus, error) {
                 self.hideIndicator();
-                self.error(jqXHR, textStatus, error);
+                this.error(jqXHR, textStatus, error);
                 onErrorCallback();
             }
         });
@@ -334,7 +336,7 @@ class CalendarCache {
             },
             error: function (jqXHR, textStatus, error) {
                 self.hideIndicator();
-                self.error(jqXHR, textStatus, error);
+                this.error(jqXHR, textStatus, error);
                 onErrorCallback();
             }
         });
