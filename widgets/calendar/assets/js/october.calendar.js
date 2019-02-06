@@ -21,7 +21,6 @@
             self.$loadContainer.loadIndicator('hide');
         };
 
-
         $.oc.foundation.controlUtils.markDisposable(element)
         Base.call(this)
         this.init()
@@ -131,6 +130,14 @@
         };
         this.clearEvents();
         this.calendarCache.requestEvents(data, onSuccessCallback, onErrorCallback);
+    }
+
+    Calendar.prototype.reloadLastMonth = function() {
+        this.clearEvents();
+        const self = this;
+        this.calendarCache.reloadLastMonth(function(events){
+            self.addEvents(events);
+        });
     }
 
     Calendar.prototype.onEventClick = function(info){

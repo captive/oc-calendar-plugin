@@ -341,6 +341,13 @@ class CalendarCache {
             }
         });
     }
+
+    reloadLastMonth(onSuccessCallback = () => {}, onErrorCallback = () => {}) {
+        const monthData = this.getLastMonthRequestData();
+        this.clearCache();
+        this.requestEvents(monthData, onSuccessCallback, onErrorCallback);
+    }
+
     dispose() {
         this._hideIndicatorCallback = null;
         this._showIndicatorCallback = null;
