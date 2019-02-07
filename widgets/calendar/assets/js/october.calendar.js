@@ -87,8 +87,9 @@
             eventLimit: true, // allow "more" link when too many events
 
             firstDay: this.firstDay,
-            eventClick: function(info){
-                self.onEventClick(info);
+            eventTimeFormat: {
+                hour: '2-digit',
+                minute: '2-digit',
             },
             events: function (fetchInfo, successCallback, failureCallback){
                 self.onPrevNextButtonClick(fetchInfo, successCallback, failureCallback);
@@ -144,7 +145,7 @@
         info.jsEvent.preventDefault();
         const url = info.event.url;
         if (url) {
-            if (url.startsWith('http')){
+            if (url.startsWith('http') || (!url.startsWith('$')) ){
                 location.href = url;
             }else{
                 const elements = url.split('.');
