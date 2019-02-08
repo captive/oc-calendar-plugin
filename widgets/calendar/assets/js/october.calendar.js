@@ -91,6 +91,9 @@
                 hour: '2-digit',
                 minute: '2-digit',
             },
+            eventClick: function (info) {
+                self.onEventClick(info);
+            },
             events: function (fetchInfo, successCallback, failureCallback){
                 self.onPrevNextButtonClick(fetchInfo, successCallback, failureCallback);
             }
