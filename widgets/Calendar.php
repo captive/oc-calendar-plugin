@@ -1,7 +1,6 @@
 <?php namespace Captive\Calendar\Widgets;
 
 use Db;
-use Log;
 use Lang;
 use Config;
 use Backend;
@@ -48,12 +47,8 @@ class Calendar extends WidgetBase
      */
     public $recordOnClick;
 
-
     /**
-     *
-     * Triggered when the user clicks on a date or a time
-     *
-     * @var string
+     * @var string Triggered when the user clicks on a date or a time
      */
     public $onClickDate;
 
@@ -73,12 +68,9 @@ class Calendar extends WidgetBase
     public $recordEnd = 'end_at';
 
     /**
-     *
      * @var string The model property to use to show the background color of this record, '' = the default background color in the calendar.less
      */
     public $recordColor = null;
-
-    public $recordId = null;
 
     /**
      * @var array Display modes to allow ['month', 'week', 'day', 'list']
@@ -133,15 +125,14 @@ class Calendar extends WidgetBase
             'columns',
             'recordUrl',
             'recordOnClick',
-            'recordId',
+            'onClickDate',
             'recordTitle',
             'recordStart',
             'recordEnd',
-            'onClickDate',
+            'recordColor',
             'previewMode',
             'searchList',
             'availableDisplayModes',
-            'recordColor',
         ]);
 
         // Initialize the search columns
@@ -620,7 +611,6 @@ class Calendar extends WidgetBase
      * @return string md5
      */
     protected function getCacheKey($query){
-
         $bindings = array_map(function ($binding) {
             return (string)$binding;
         }, $query->getBindings());
@@ -628,7 +618,6 @@ class Calendar extends WidgetBase
         $name = $query->getConnection()->getName();
         $md5 = md5($name . $query->toSql() . serialize($bindings));
         return $md5;
-
     }
 
     /**
@@ -677,7 +666,7 @@ class Calendar extends WidgetBase
         $timeZone = new DateTimeZone(Config::get('app.timezone','UTC'));
         foreach ($records as $record) {
             $eventData = new EventData([
-                'id'    => empty($this->recordId) ? '' : $record->{$this->recordId},
+                'id'    => $record->getKey(),
                 'url'   => $this->getRecordUrl($record),
                 'title' => $record->{$this->recordTitle},
                 'start' => $record->{$this->recordStart},
@@ -734,7 +723,6 @@ class Calendar extends WidgetBase
             'endTime' => $endTime,
             'timeZone' => $timeZone
         ];
-
 
         if ($this->isFilteredByDateRange()){
             $startTime = 0;

@@ -37,7 +37,6 @@
     }
 
     Calendar.prototype.init = function () {
-
         let self = this;
         $(document).ready(function () {
             self.initCalendarControl();
@@ -50,7 +49,6 @@
     };
 
     Calendar.prototype.dispose = function () {
-
         this.calendarCache.dispose();
         $(document).off('ajaxComplete', this.proxy(this.onFilterUpdate));
         this.$el.off('dispose-control', this.proxy(this.dispose));
@@ -105,8 +103,6 @@
     };
 
     Calendar.prototype.beforeFilterRequestSend = function(ev, context){
-
-
         if (context.handler !== "calendarFilter::onFilterUpdate" &&
             context.handler !== "calendarToolbarSearch::onSubmit") {
                 return true;
@@ -116,17 +112,14 @@
         if (monthRequestData === null) return;
 
         context.options.data.calendar_time = monthRequestData;
-
     }
 
     Calendar.prototype.onPrevNextButtonClick = function (fetchInfo, successCallback, failureCallback){
         this.refreshEvents(fetchInfo.start.getTime() / 1000,
             fetchInfo.end.getTime() / 1000, fetchInfo.timeZone, successCallback, failureCallback);
-
     };
 
     Calendar.prototype.refreshEvents = function (startTime, endTime, timeZone, onSuccessCallback = function () { }, onErrorCallback = function () { }) {
-
         const data = {
             startTime: startTime,
             endTime: endTime,
@@ -225,8 +218,6 @@
             }
         }
     }
-
-
 
     // CALENDAR CONTROL PLUGIN DEFINITION
     // ============================

@@ -178,7 +178,6 @@ class CalendarCache {
      * @param array requestData {startTime: unixTimestamp, endTime:, timeZone: string}
      */
     eagerRequest(requestData) {
-
         requestData = this.getMonthRequestData(requestData);
         let monthData = [];
         if (requestData.startTime > this.lastRequestStartTime) {
@@ -210,7 +209,6 @@ class CalendarCache {
     }
 
     saveFirstThreeMonthsData(data, monthDataList, onSuccessCallback) {
-
         const allEvents = data.events;
         let prevoiousMonthData = monthDataList[0];
         let currentMonthData = monthDataList[1];
@@ -303,7 +301,6 @@ class CalendarCache {
     }
 
     requestEvents(requestData, onSuccessCallback = () => {}, onErrorCallback = () => {}) {
-
         if (this.isEmpty()) {
             this.loadFirstThreeMonthsData(requestData, onSuccessCallback, onErrorCallback);
             return;
