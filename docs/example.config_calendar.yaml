@@ -46,8 +46,8 @@ recordStart: start_time
 # The property to use as the end time for the record
 recordEnd: end_time
 
-# The property to use as the background color displayed on the event
-recordBackgroundColor: event_color
+# The property to use as the background color displayed on the record, , '' = the default background color in the calendar.less
+recordColor: event_color
 
 # Available display modes to be supported in this instance
 availableDisplayModes: [month, week, day, list]

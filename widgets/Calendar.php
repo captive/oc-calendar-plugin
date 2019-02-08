@@ -72,7 +72,11 @@ class Calendar extends WidgetBase
      */
     public $recordEnd = 'end_at';
 
-    public $recordBackgroundColor = null;
+    /**
+     *
+     * @var string The model property to use to show the background color of this record, '' = the default background color in the calendar.less
+     */
+    public $recordColor = null;
 
     public $recordId = null;
 
@@ -137,7 +141,7 @@ class Calendar extends WidgetBase
             'previewMode',
             'searchList',
             'availableDisplayModes',
-            'recordBackgroundColor',
+            'recordColor',
         ]);
 
         // Initialize the search columns
@@ -678,7 +682,7 @@ class Calendar extends WidgetBase
                 'title' => $record->{$this->recordTitle},
                 'start' => $record->{$this->recordStart},
                 'end'   => $record->{$this->recordEnd},
-                'color' => empty($this->recordBackgroundColor) ? '' : $record->{$this->recordBackgroundColor},
+                'color' => empty($this->recordColor) ? '' : $record->{$this->recordColor},
             ], $timeZone);
             $events[] = $eventData->toArray();
         }
