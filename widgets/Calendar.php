@@ -120,6 +120,7 @@ class Calendar extends WidgetBase
             'recordStart',
             'recordEnd',
             'previewMode',
+            'searchList',
             'availableDisplayModes',
         ]);
 
@@ -165,6 +166,7 @@ class Calendar extends WidgetBase
         $this->addJs('js/fullcalendar.js', '4.0.0-alpha.4');
         // @see https://fullcalendar.io/docs/v4/timeZone
         $this->addJs('js/plugins/moment-timezone.min.js', '4.0.0-alpha.4');
+        $this->addJs('js/october.calendar.cache.js', 'captive.calendar');
         $this->addJs('js/october.calendar.js', 'captive.calendar');
     }
 
@@ -202,7 +204,7 @@ class Calendar extends WidgetBase
                 $selectedModes[] = $fullCalendarModes[$mode];
             }
         }
-       return implode(',', $selectedModes);
+        return implode(',', $selectedModes);
     }
 
     /**
@@ -503,12 +505,6 @@ class Calendar extends WidgetBase
                 }
             }
 
-            /**
-             * Current month date start_time end_time
-             */
-            if ($startTime >0) $innerQuery->whereRaw($this->recordEnd .' >= ?', [Carbon::createFromTimestamp($startTime)]);
-            if ($endTime > 0) $innerQuery->whereRaw($this->recordStart . ' <= ?', [Carbon::createFromTimestamp($endTime)]);
-
         });
 
         /*
@@ -593,17 +589,51 @@ class Calendar extends WidgetBase
         return $query;
     }
 
+    /**
+     *
+     * Create a MD5 string based on current query SQL
+     * to set the cacheKey in calendar cache
+     *
+     * @see MemoryCache->hash()
+     *
+     * @param QueryBuilder $query
+     * @return string md5
+     */
+    protected function getCacheKey($query){
+
+        $bindings = array_map(function ($binding) {
+            return (string)$binding;
+        }, $query->getBindings());
+
+        $name = $query->getConnection()->getName();
+        $md5 = md5($name . $query->toSql() . serialize($bindings));
+        return $md5;
+
+    }
 
     /**
      *
      *
      * @param integer $startTime unixTimestamp, the current calendar month startTime, eg: 1546149600
      * @param integer $endTime unixTimestamp, the current calendar month endTime, eg: 1549778400
-     * @return void
+     * @return array ['events'=> [ {url, title, start, end}], 'cacheKey'=> 'MD5 String']
      */
     public function getRecords($startTime = 0 , $endTime = 0)
     {
-        $records = $this->prepareQuery($startTime, $endTime)->get();
+        $query = $this->prepareQuery($startTime, $endTime);
+        $cacheKey = $this->getCacheKey($query);
+
+        /**
+         * The $startTime and $endTime are from calendar month, should be ignore
+         */
+        if ($startTime > 0 ||  $endTime > 0){
+            $query->where(function ($innerQuery) use ($startTime, $endTime) {
+                if ($startTime > 0) $innerQuery->whereRaw($this->recordEnd .' >= ?', [Carbon::createFromTimestamp($startTime)]);
+                if ($endTime > 0) $innerQuery->whereRaw($this->recordStart . ' < ?', [Carbon::createFromTimestamp($endTime)]);
+            });
+        }
+
+        $records = $query->get();
         $list = [];
 
         $timeZone = new DateTimeZone(Config::get('app.timezone','UTC'));
@@ -616,17 +646,26 @@ class Calendar extends WidgetBase
             ], $timeZone);
             $list[] = $eventData->toArray();
         }
-        return $list;
+        return [
+            'events' => $list,
+            'cacheKey' => $cacheKey,
+            'startTime' => $startTime,
+            'endTime' => $endTime,
+        ];
     }
 
 
     public function onFetchEvents()
     {
-        return Response::json([
-            'events' => $this->getRecords(),
-        ]);
+        return Response::json($this->getRecords());
     }
 
+    /**
+     * It has been called from the first refresh page
+     * and next or previous button click event
+     *
+     * @return json
+     */
     public function onRefreshEvents()
     {
         $startTime = post('startTime');
@@ -638,16 +677,14 @@ class Calendar extends WidgetBase
             'endTime' => $endTime,
             'timeZone' => $timeZone
         ];
-        $this->setMonthStartEndTime($data);
+
 
         if ($this->isFilteredByDateRange()){
             $startTime = 0;
             $endTime = 0;
         }
 
-        return Response::json([
-            'events' => $this->getRecords($startTime, $endTime),
-        ]);
+        return Response::json($this->getRecords($startTime, $endTime));
     }
 
     // search
@@ -718,20 +755,16 @@ class Calendar extends WidgetBase
         return false;
     }
 
-    /**
-     * Save the startTime, endTime, timeZone to the seesion
-     *
-     * @param array $data [startTime=>1546149600, endTime=>1549778400, timeZone=>America/Regina ]
-     * @return void
-     */
-    protected function setMonthStartEndTime($data)
-    {
-        $this->putSession(static::MONTH_START_END_CACHE_KEY, $data);
-    }
 
-    protected function getMonthStartEndTime($default = null)
+    /**
+     * Get the startTime and endTime from the october.calendar.js Calendar.prototype.beforeFilterRequestSend
+     *
+     * @return array $data [startTime=>1546149600, endTime=>1549778400, timeZone=>America/Regina ]
+     */
+    protected function getMonthStartEndTime()
     {
-        return $this->getSession(static::MONTH_START_END_CACHE_KEY, $default);
+        $calendar_time = post('calendar_time');
+        return $calendar_time;
     }
 
 
@@ -752,11 +785,11 @@ class Calendar extends WidgetBase
             }
         }
 
-        return [
-            'id'     => 'calendar',
-            'method' => 'onRefresh',
-            'events' => $this->getRecords($startTime, $endTime)
-        ];
+        $records = $this->getRecords($startTime, $endTime);
+        $records['id'] = 'calendar';
+        $records['method'] = 'onRefresh';
+
+        return $records;
     }
 
     /**

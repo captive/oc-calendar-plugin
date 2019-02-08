@@ -9,6 +9,16 @@
         this.$el = $(element);
         this.calendarControl =  null;
         this.$loadContainer = this.$el.find('.loading-indicator-container:first');
+        this.firstDay = 0;
+
+        this.calendarCache = new CalendarCache(this.makeEventHandler('onRefreshEvents'), this.firstDay);
+        const self = this;
+        this.calendarCache.showIndicatorCallback = function(){
+            self.$loadContainer.loadIndicator();
+        };
+        this.calendarCache.hideIndicatorCallback = function(){
+            self.$loadContainer.loadIndicator('hide');
+        }
 
         $.oc.foundation.controlUtils.markDisposable(element)
         Base.call(this)
@@ -33,13 +43,16 @@
 
         this.$el.on('dispose-control', this.proxy(this.dispose));
         $(document).on('ajaxComplete', this.proxy(this.onFilterUpdate));
+        $(document).on('oc.beforeRequest', this.proxy(this.beforeFilterRequestSend));
 
     };
 
     Calendar.prototype.dispose = function () {
 
+        this.calendarCache.dispose();
         $(document).off('ajaxComplete', this.proxy(this.onFilterUpdate));
         this.$el.off('dispose-control', this.proxy(this.dispose));
+        $(document).off('oc.beforeRequest', this.proxy(this.beforeFilterRequestSend));
         this.$el.removeData('oc.calendar');
 
         this.$el = null
@@ -63,12 +76,6 @@
             },
             timeZone: timezone,
             timeZoneImpl: 'moment-timezone',
-            titleFormat: {
-                month: 'short',
-                year: 'numeric',
-                day: 'numeric',
-                weekday: 'long'
-            },
             navLinks: true, // can click day/week names to navigate views
 
             weekNumbers: true,
@@ -77,7 +84,7 @@
             editable: this.options.editable,
             eventLimit: true, // allow "more" link when too many events
 
-            firstDay: 0,
+            firstDay: this.firstDay,
             eventClick: function(info){
                 self.onEventClick(info);
             },
@@ -87,10 +94,24 @@
 
         });
         this.calendarControl.render();
-        // this.fetchEvents();
         this.calendarControl.on('dateClick', this.proxy(this.onDateClick));
 
     };
+
+    Calendar.prototype.beforeFilterRequestSend = function(ev, context){
+
+
+        if (context.handler !== "calendarFilter::onFilterUpdate" &&
+            context.handler !== "calendarToolbarSearch::onSubmit") {
+                return true;
+        }
+
+        const monthRequestData = this.calendarCache.getLastMonthRequestData();
+        if (monthRequestData === null) return;
+
+        context.options.data.calendar_time = monthRequestData;
+
+    }
 
     Calendar.prototype.onPrevNextButtonClick = function (fetchInfo, successCallback, failureCallback){
         this.refreshEvents(fetchInfo.start.getTime() / 1000,
@@ -99,27 +120,14 @@
     };
 
     Calendar.prototype.refreshEvents = function (startTime, endTime, timeZone, onSuccessCallback = function () { }, onErrorCallback = function () { }) {
-        const self = this;
-        this.$loadContainer.loadIndicator();
+
         const data = {
             startTime: startTime,
             endTime: endTime,
             timeZone: timeZone
         };
-
-        $.request(this.makeEventHandler('onRefreshEvents'), {
-            data: data,
-            success: function (data, textStatus, jqXHR) {
-                const events = data.events;
-                self.$loadContainer.loadIndicator('hide');
-                onSuccessCallback(events);
-            },
-            error: function (jqXHR, textStatus, error) {
-                self.$loadContainer.loadIndicator('hide');
-                this.error(jqXHR, textStatus, error);
-                onErrorCallback();
-            }
-        });
+        this.clearEvents();
+        this.calendarCache.requestEvents(data, onSuccessCallback, onErrorCallback);
     }
 
     Calendar.prototype.onEventClick = function(info){
@@ -162,7 +170,10 @@
         return this.options.alias + "::" + methodName;
     }
     Calendar.prototype.clearEvents = function(){
-        this.calendarControl.getEvents().forEach(event => {
+        if (this.calendarControl === null ) return;
+        const events = this.calendarControl.getEvents();
+        if (events === null) return;
+        events.forEach(event => {
             event.remove();
         });
     }
@@ -174,29 +185,19 @@
                 && data.hasOwnProperty('method')) {
             if (data.id === 'calendar' && data.method === 'onRefresh') {
                 this.clearEvents();
+                const requestData  = {
+                    startTime: data.startTime,
+                    endTime: data.endTime
+                }
+                this.calendarCache.saveCache(requestData, data);
+                //clear the prevous requestTime
+                this.calendarCache.setLastRequestTime(0);
+                this.calendarCache.eagerRequest(requestData);
                 this.addEvents(data.events);
             }
         }
     }
 
-    Calendar.prototype.fetchEvents = function (onSuccessCallback = function () {}, onErrorCallback = function () {}){
-        const self = this;
-        this.$loadContainer.loadIndicator();
-        $.request(this.makeEventHandler('onFetchEvents'), {
-            data: '',
-            success: function (data, textStatus, jqXHR) {
-                const events = data['events'];
-                self.addEvents(events);
-                self.$loadContainer.loadIndicator('hide');
-                onSuccessCallback();
-            },
-            error: function (jqXHR, textStatus, error) {
-                self.$loadContainer.loadIndicator('hide');
-                this.error(jqXHR, textStatus, error);
-                onErrorCallback();
-            }
-        });
-    }
 
 
     // CALENDAR CONTROL PLUGIN DEFINITION
