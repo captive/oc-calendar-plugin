@@ -16,9 +16,10 @@
         this.calendarCache.showIndicatorCallback = function(){
             self.$loadContainer.loadIndicator();
         };
+
         this.calendarCache.hideIndicatorCallback = function(){
             self.$loadContainer.loadIndicator('hide');
-        }
+        };
 
         $.oc.foundation.controlUtils.markDisposable(element)
         Base.call(this)
@@ -32,6 +33,7 @@
         alias: null,
         displayModes: 'month',
         editable: false,
+        clickDate: null,
     }
 
     Calendar.prototype.init = function () {
@@ -85,7 +87,11 @@
             eventLimit: true, // allow "more" link when too many events
 
             firstDay: this.firstDay,
-            eventClick: function(info){
+            eventTimeFormat: {
+                hour: '2-digit',
+                minute: '2-digit',
+            },
+            eventClick: function (info) {
                 self.onEventClick(info);
             },
             events: function (fetchInfo, successCallback, failureCallback){
@@ -130,14 +136,28 @@
         this.calendarCache.requestEvents(data, onSuccessCallback, onErrorCallback);
     }
 
+    Calendar.prototype.reloadLastMonth = function() {
+        this.clearEvents();
+        const self = this;
+        this.calendarCache.reloadLastMonth(function(events){
+            self.addEvents(events);
+        });
+    }
+
     Calendar.prototype.onEventClick = function(info){
         info.jsEvent.preventDefault();
         const url = info.event.url;
         if (url) {
-            if (url.startsWith('http')){
+            if (url.startsWith('http') || (!url.startsWith('$')) ){
                 location.href = url;
             }else{
-                eval(url);
+                const elements = url.split('.');
+                let funcName = elements.pop(); // remove the last element
+                const objectName = elements.join('.');
+                const index = funcName.indexOf('(');
+                funcName = funcName.substring(0, index);
+                const object = eval(objectName);
+                object[funcName](info, info.event.start, info.event.end, info.event, info.el);
             }
         }
     }
@@ -150,8 +170,16 @@
         }
     }
 
-    Calendar.prototype.onDateClick = function (ev) {
-        // alert('AAA');
+    Calendar.prototype.onDateClick = function (info) {
+        if (this.options.clickDate == null) return;
+        const elements = this.options.clickDate.split('.');
+        let funcName =  elements.pop(); // remove the last element
+        const objectName = elements.join('.');
+
+        const index = funcName.indexOf('(');
+        funcName = funcName.substring(0, index);
+        const object = eval(objectName);
+        object[funcName](info, info.date, info.dateStr, info.allDay, info.dayEl, info.jsEvent, info.view);
     }
 
     Calendar.prototype.addEvent = function (eventObj = null) {

@@ -4,8 +4,8 @@
 
     var EventController = function () {
 
-        this.onEventClick = function (eventId) {
-            alert('eventID  = '+ eventId);
+        this.onEventClick = function (data, startDate, endDate, event, eventEl) {
+            alert('eventID  = '+ event.id);
         }
 
     }
