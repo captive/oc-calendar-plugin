@@ -666,12 +666,13 @@ class Calendar extends WidgetBase
         $timeZone = new DateTimeZone(Config::get('app.timezone','UTC'));
         foreach ($records as $record) {
             $eventData = new EventData([
-                'id'    => $record->getKey(),
-                'url'   => $this->getRecordUrl($record),
-                'title' => $record->{$this->recordTitle},
-                'start' => $record->{$this->recordStart},
-                'end'   => $record->{$this->recordEnd},
-                'color' => empty($this->recordColor) ? '' : $record->{$this->recordColor},
+                'id'     => $record->getKey(),
+                'url'    => $this->getRecordUrl($record),
+                'title'  => $record->{$this->recordTitle},
+                'start'  => $record->{$this->recordStart},
+                'end'    => $record->{$this->recordEnd},
+                'allDay' => (bool) $record->allDay,
+                'color'  => empty($this->recordColor) ? '' : $record->{$this->recordColor},
             ], $timeZone);
             $events[] = $eventData->toArray();
         }
