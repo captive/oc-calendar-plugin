@@ -164,7 +164,7 @@
     }
 
     Calendar.prototype.onDateClick = function (info) {
-        if (this.options.clickDate == null) return;
+        if (this.options.clickDate == null || this.options.clickDate.length === 0) return;
         const elements = this.options.clickDate.split('.');
         let funcName =  elements.pop(); // remove the last element
         const objectName = elements.join('.');
