@@ -31,7 +31,7 @@
 
     Calendar.DEFAULTS = {
         alias: null,
-        displayModes: 'month',
+        displayModes: 'dayGridMonth',
         editable: false,
         clickDate: null,
     }
@@ -68,14 +68,15 @@
         const $calendar = this.$el.find('.calendar-control');
         const self = this;
         const timezone = $('meta[name="backend-timezone"]').attr('content');
+
         this.calendarControl = new FullCalendar.Calendar($calendar[0], {
+            plugins: [ 'interaction', 'dayGrid', 'timeGrid', 'list', 'momentTimezone'],
             header: {
                 left: 'prev,next today',
                 center: 'title',
                 right: this.options.displayModes
             },
             timeZone: timezone,
-            timeZoneImpl: 'moment-timezone',
             navLinks: true, // can click day/week names to navigate views
 
             weekNumbers: true,
@@ -94,11 +95,13 @@
             },
             events: function (fetchInfo, successCallback, failureCallback){
                 self.onPrevNextButtonClick(fetchInfo, successCallback, failureCallback);
+            },
+            dateClick: function(info){
+                self.onDateClick(info);
             }
 
         });
         this.calendarControl.render();
-        this.calendarControl.on('dateClick', this.proxy(this.onDateClick));
 
     };
 
@@ -179,9 +182,13 @@
         this.calendarControl.addEvent(eventObj);
     }
     Calendar.prototype.addEvents = function (eventList) {
-        for(let event of eventList){
-            this.addEvent(event);
-        }
+
+        const self = this;
+        this.calendarControl.batchRendering(function() {
+            for(let event of eventList){
+                self.addEvent(event);
+            }
+        });
     }
 
     /**
@@ -194,9 +201,12 @@
         if (this.calendarControl === null ) return;
         const events = this.calendarControl.getEvents();
         if (events === null) return;
-        events.forEach(event => {
-            event.remove();
+        this.calendarControl.batchRendering(function() {
+            events.forEach(event => {
+                event.remove();
+            });
         });
+
     }
 
     Calendar.prototype.onFilterUpdate = function (event, xhr, settings){

@@ -173,10 +173,22 @@ class Calendar extends WidgetBase
      */
     protected function loadAssets()
     {
-        $this->addCss(['css/fullcalendar.css', 'less/calendar.less'], 'captive.calendar');
-        $this->addJs('js/fullcalendar.js', '4.0.0-alpha.4');
+
+        $this->addCss(['packages/core/main.min.css', 'packages/list/main.min.css','packages/daygrid/main.min.css','packages/timegrid/main.min.css'], '4.1.0');
+        $this->addCss(['less/calendar.less'], 'captive.calendar');
+        // $this->addJs('js/fullcalendar.js', '4.0.0-alpha.4');
+
+        $this->addJs('packages/core/main.min.js', '4.1.0');
+        $this->addJs('packages/list/main.min.js', '4.1.0');
+        $this->addJs('packages/daygrid/main.min.js', '4.1.0');
+        $this->addJs('packages/timegrid/main.min.js', '4.1.0');
+        $this->addJs('packages/interaction/main.min.js', '4.1.0');
+
         // @see https://fullcalendar.io/docs/v4/timeZone
-        $this->addJs('js/plugins/moment-timezone.min.js', '4.0.0-alpha.4');
+        $this->addJs('packages/moment-timezone/main.min.js', '4.1.0');
+
+
+
         $this->addJs('js/october.calendar.cache.js', 'captive.calendar');
         $this->addJs('js/october.calendar.js', 'captive.calendar');
     }
@@ -203,9 +215,9 @@ class Calendar extends WidgetBase
         }
 
         $fullCalendarModes = [
-            'month' => 'month',
-            'week'  => 'agendaWeek',
-            'day'   => 'agendaDay',
+            'month' => 'dayGridMonth',
+            'week'  => 'timeGridWeek',
+            'day'   => 'timeGridDay',
             'list'  => 'listMonth'
         ];
 
