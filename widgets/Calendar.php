@@ -73,6 +73,12 @@ class Calendar extends WidgetBase
     public $recordColor = null;
 
     /**
+     *
+     * @var string|array The model property to use as the content of the tooltip for the record
+     */
+    public $recordTooltip = null;
+
+    /**
      * @var array Display modes to allow ['month', 'week', 'day', 'list']
      */
     public $availableDisplayModes = [];
@@ -130,6 +136,7 @@ class Calendar extends WidgetBase
             'recordStart',
             'recordEnd',
             'recordColor',
+            'recordTooltip',
             'previewMode',
             'searchList',
             'availableDisplayModes',
@@ -176,8 +183,12 @@ class Calendar extends WidgetBase
 
         $this->addCss(['packages/core/main.min.css', 'packages/list/main.min.css','packages/daygrid/main.min.css','packages/timegrid/main.min.css'], '4.1.0');
         $this->addCss(['less/calendar.less'], 'captive.calendar');
-        // $this->addJs('js/fullcalendar.js', '4.0.0-alpha.4');
 
+        //Tooltip
+        $this->addJs('packages/vendor/popper.min.js', '4.1.0');
+        $this->addJs('packages/vendor/tooltip.min.js', '4.1.0');
+
+        //Calendar
         $this->addJs('packages/core/main.min.js', '4.1.0');
         $this->addJs('packages/list/main.min.js', '4.1.0');
         $this->addJs('packages/daygrid/main.min.js', '4.1.0');
@@ -676,7 +687,22 @@ class Calendar extends WidgetBase
         $events = [];
 
         $timeZone = new DateTimeZone(Config::get('app.timezone','UTC'));
+
         foreach ($records as $record) {
+            if (empty($this->recordTooltip)) {
+                $tooltip = null;
+            }else {
+                if (is_array($this->recordTooltip)) {
+                    $tooltip = '';
+                    foreach ($this->recordTooltip as $item){
+                        $keyName = $this->{$item};
+                        $tooltip .= $record->{$keyName} . ' ';
+                    }
+                }else {
+                    $tooltip = $record->{$this->recordTooltip};
+                }
+            }
+
             $eventData = new EventData([
                 'id'     => $record->getKey(),
                 'url'    => $this->getRecordUrl($record),
@@ -685,6 +711,7 @@ class Calendar extends WidgetBase
                 'end'    => $record->{$this->recordEnd},
                 'allDay' => (bool) $record->allDay,
                 'color'  => empty($this->recordColor) ? '' : $record->{$this->recordColor},
+                'tooltip' => $tooltip
             ], $timeZone);
             $events[] = $eventData->toArray();
         }
