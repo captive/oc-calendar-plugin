@@ -39,6 +39,13 @@ class EventData
     public $end;
 
     /**
+     *
+     * @var string|null the tooltip content
+     */
+    public $tooltip;
+
+
+    /**
      * @var array Other additional properties
      */
     public $properties = [];

@@ -68,6 +68,7 @@
         const $calendar = this.$el.find('.calendar-control');
         const self = this;
         const timezone = $('meta[name="backend-timezone"]').attr('content');
+        const container = document.querySelector(".calendar-container");
 
         this.calendarControl = new FullCalendar.Calendar($calendar[0], {
             plugins: [ 'interaction', 'dayGrid', 'timeGrid', 'list', 'momentTimezone'],
@@ -92,6 +93,17 @@
             },
             eventClick: function (info) {
                 self.onEventClick(info);
+            },
+            eventRender: function(info) {
+                const tooltipContent = info.event.extendedProps.tooltip;
+                if (tooltipContent) {
+                    let tooltip = new Tooltip(info.el, {
+                        title: tooltipContent,
+                        placement: 'top',
+                        trigger: 'hover',
+                        container: container
+                    });
+                }
             },
             events: function (fetchInfo, successCallback, failureCallback){
                 self.onPrevNextButtonClick(fetchInfo, successCallback, failureCallback);
