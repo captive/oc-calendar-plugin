@@ -673,7 +673,7 @@ class Calendar extends WidgetBase
          *
          * Example usage:
          *
-         *     Event::listen('captive.calendar.extendRecords', function($calendarWidget, &$records , $startTime, $endTime) {
+         *     Event::listen('captive.calendar.extendRecords', function($calendarWidget, &$records, $startTime, $endTime) {
          *         $records=$data;
          *     });
          *
@@ -722,13 +722,13 @@ class Calendar extends WidgetBase
          *
          * Example usage:
          *
-         *     Event::listen('captive.calendar.extendEvents', function($calendarWidget, &$events) {
+         *     Event::listen('captive.calendar.extendEvents', function($calendarWidget, &$events, $startTime, $endTime) {
          *         $records=$data;
          *     });
          *
          *
          */
-        if ($event = $this->fireSystemEvent('captive.calendar.extendEvents', [&$events])) {
+        if ($event = $this->fireSystemEvent('captive.calendar.extendEvents', [&$events, $startTime, $endTime])) {
             $events = $event;
         }
 
