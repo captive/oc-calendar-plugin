@@ -221,8 +221,8 @@
 
     }
 
-    Calendar.prototype.onFilterUpdate = function (event, xhr, settings){
-        const data = xhr.responseJSON;
+    Calendar.prototype.onFilterUpdate = function (event, context, responseData, textStatus, jqXHR){
+        const data = responseData.responseJSON;
         if (data && data.hasOwnProperty('id')
                 && data.hasOwnProperty('events')
                 && data.hasOwnProperty('method')) {
